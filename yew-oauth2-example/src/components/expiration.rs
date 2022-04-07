@@ -1,6 +1,4 @@
-use super::ViewAuthInfo;
-use chrono::{Date, DateTime, TimeZone, Utc};
-use chrono::{Duration, DurationRound};
+use chrono::{Duration, TimeZone, Utc};
 use gloo_timers::callback::Interval;
 use yew::{context::ContextHandle, prelude::*};
 use yew_oauth2::prelude::*;

@@ -1,4 +1,11 @@
-use crate::context::{OAuth2Context, Reason};
+mod support;
+
+pub use support::*;
+
+use crate::{
+    config::OAuth2Configuration,
+    context::{OAuth2Context, Reason},
+};
 use gloo_storage::{SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
@@ -8,23 +15,22 @@ use oauth2::{
     basic::{BasicClient, BasicTokenResponse},
     reqwest::async_http_client,
     url::Url,
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, RefreshToken, TokenResponse, TokenUrl,
+    AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, PkceCodeVerifier,
+    RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
 };
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display, Formatter},
-    ops::{Deref, DerefMut},
     time::Duration,
 };
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
-use yew::{html::Scope, Callback, Component};
-use yew_agent::{Agent, AgentLink, Bridge, Bridged, Context, Dispatched, Dispatcher, HandlerId};
+use yew_agent::{Agent, AgentLink, Context, HandlerId};
 
 #[derive(Debug)]
 pub enum OAuth2Error {
     NotInitialized,
+    Configuration(String),
     StartLogin(String),
     LoginResult(String),
     Storage(String),
@@ -34,6 +40,7 @@ impl Display for OAuth2Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotInitialized => f.write_str("not initialized"),
+            Self::Configuration(err) => write!(f, "configuration error: {err}"),
             Self::StartLogin(err) => write!(f, "start login error: {err}"),
             Self::LoginResult(err) => write!(f, "login result: {err}"),
             Self::Storage(err) => write!(f, "storage error: {err}"),
@@ -50,18 +57,18 @@ impl From<OAuth2Error> for OAuth2Context {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OAuth2Configuration {
-    pub client_id: String,
-    pub client_secret: Option<String>,
-
-    pub auth_url: Url,
-    pub token_url: Option<Url>,
-    pub scopes: Vec<String>,
+pub struct AgentConfiguration {
+    pub config: OAuth2Configuration,
     pub grace_period: Duration,
 }
 
 #[derive(Debug)]
 pub enum Msg {
+    Configure {
+        client: BasicClient,
+        config: InnerConfig,
+    },
+    ConfigurationError(OAuth2Error),
     Change(OAuth2Context),
     Refresh,
 }
@@ -69,9 +76,9 @@ pub enum Msg {
 #[derive(Debug)]
 pub enum In {
     /// Initialize and configure the agent.
-    Init(OAuth2Configuration),
+    Init(AgentConfiguration),
     // Reconfigure the agent.
-    Configure(OAuth2Configuration),
+    Configure(AgentConfiguration),
     Login,
     RequestState,
     Logout,
@@ -83,10 +90,16 @@ pub enum Out {
     Error(OAuth2Error),
 }
 
+#[derive(Clone, Debug)]
+pub struct InnerConfig {
+    scopes: Vec<Scope>,
+    grace_period: Duration,
+}
+
 pub struct OAuth2Agent {
     link: AgentLink<Self>,
     client: Option<BasicClient>,
-    config: Option<OAuth2Configuration>,
+    config: Option<InnerConfig>,
 
     clients: HashSet<HandlerId>,
     state: OAuth2Context,
@@ -115,6 +128,31 @@ impl Agent for OAuth2Agent {
         log::debug!("Update: {:?}", msg);
 
         match msg {
+            Self::Message::Configure { config, client } => {
+                self.client = Some(client);
+                self.config = Some(config);
+
+                if matches!(self.state, OAuth2Context::NotInitialized) {
+                    let detected = self.detect_state();
+                    log::debug!("Detected state: {detected:?}");
+                    match detected {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            self.update_state(OAuth2Context::NotAuthenticated {
+                                reason: Reason::NewSession,
+                            });
+                        }
+                        Err(err) => {
+                            self.update_state(err.into());
+                        }
+                    }
+                }
+            }
+            Self::Message::ConfigurationError(err) => {
+                if matches!(self.state, OAuth2Context::NotInitialized) {
+                    self.update_state(err.into());
+                }
+            }
             Self::Message::Change(state) => {
                 self.update_state(state);
             }
@@ -134,26 +172,18 @@ impl Agent for OAuth2Agent {
         log::debug!("Input: {:?}", msg);
 
         match msg {
-            Self::Input::Init(config) => {
-                if matches!(self.state, OAuth2Context::NotInitialized) {
-                    self.configure(config);
-                    let detected = self.detect_state();
-                    log::debug!("Detected state: {detected:?}");
-                    match detected {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            self.update_state(OAuth2Context::NotAuthenticated {
-                                reason: Reason::NewSession,
-                            });
+            Self::Input::Init(config) | Self::Input::Configure(config) => {
+                let link = self.link.clone();
+                spawn_local(async move {
+                    match Self::make_client(config).await {
+                        Ok((client, config)) => {
+                            link.send_message(Msg::Configure { client, config });
                         }
                         Err(err) => {
-                            self.update_state(err.into());
+                            link.send_message(Msg::ConfigurationError(err));
                         }
                     }
-                }
-            }
-            Self::Input::Configure(config) => {
-                self.configure(config);
+                });
             }
             Self::Input::Login => {
                 // start the login
@@ -187,12 +217,6 @@ const STORAGE_KEY_PKCE_VERIFIER: &str = "ctron/oauth2/pkceVerifier";
 const STORAGE_KEY_REDIRECT_URL: &str = "ctron/oauth2/redirectUrl";
 
 impl OAuth2Agent {
-    fn configure(&mut self, config: OAuth2Configuration) {
-        // configure the agent
-        self.client = Some(Self::make_client(config.clone()));
-        self.config = Some(config);
-    }
-
     fn update_state(&mut self, state: OAuth2Context) {
         log::debug!("update state: {state:?}");
 
@@ -232,13 +256,30 @@ impl OAuth2Agent {
         self.state = state;
     }
 
-    fn make_client(config: OAuth2Configuration) -> BasicClient {
-        BasicClient::new(
-            ClientId::new(config.client_id),
-            config.client_secret.map(ClientSecret::new),
-            AuthUrl::from_url(config.auth_url),
-            config.token_url.map(TokenUrl::from_url),
-        )
+    async fn make_client(
+        config: AgentConfiguration,
+    ) -> Result<(BasicClient, InnerConfig), OAuth2Error> {
+        match config.config {
+            OAuth2Configuration::Provided(client_config) => {
+                let client = BasicClient::new(
+                    ClientId::new(client_config.client_id),
+                    None,
+                    AuthUrl::new(client_config.auth_url).map_err(|err| {
+                        OAuth2Error::Configuration(format!("invalid auth URL: {err}"))
+                    })?,
+                    Some(TokenUrl::new(client_config.token_url).map_err(|err| {
+                        OAuth2Error::Configuration(format!("invalid token URL: {err}"))
+                    })?),
+                );
+
+                let config = InnerConfig {
+                    scopes: client_config.scopes.into_iter().map(Scope::new).collect(),
+                    grace_period: config.grace_period,
+                };
+
+                Ok((client, config))
+            }
+        }
     }
 
     fn make_auth_url(&self) -> Result<(Url, CsrfToken, PkceCodeVerifier, String), OAuth2Error> {
@@ -500,95 +541,4 @@ struct State {
     #[allow(unused)]
     session_state: Option<String>,
     error: Option<String>,
-}
-
-pub struct OAuth2Dispatcher(Dispatcher<OAuth2Agent>);
-
-impl OAuth2Dispatcher {
-    pub fn new() -> Self {
-        Self(OAuth2Agent::dispatcher())
-    }
-}
-
-impl Default for OAuth2Dispatcher {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deref for OAuth2Dispatcher {
-    type Target = Dispatcher<OAuth2Agent>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for OAuth2Dispatcher {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-pub struct OAuth2Bridge(Box<dyn Bridge<OAuth2Agent>>);
-
-impl OAuth2Bridge {
-    pub fn new(callback: Callback<Out>) -> OAuth2Bridge {
-        Self(OAuth2Agent::bridge(callback))
-    }
-
-    pub fn from<C, F>(link: &Scope<C>, f: F) -> Self
-    where
-        C: Component,
-        F: Fn(OAuth2Context) -> C::Message + 'static,
-    {
-        let callback = link.batch_callback(move |msg| match msg {
-            Out::ContextUpdate(data) => vec![f(data)],
-            _ => vec![],
-        });
-        Self::new(callback)
-    }
-}
-
-impl Deref for OAuth2Bridge {
-    type Target = Box<dyn Bridge<OAuth2Agent>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl DerefMut for OAuth2Bridge {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-pub trait OAuth2Operations {
-    fn init(&mut self, config: OAuth2Configuration);
-    fn configure(&mut self, config: OAuth2Configuration);
-    fn start_login(&mut self);
-    fn request_state(&mut self);
-    fn logout(&mut self);
-}
-
-impl OAuth2Operations for dyn Bridge<OAuth2Agent> {
-    fn init(&mut self, config: OAuth2Configuration) {
-        self.send(In::Init(config))
-    }
-
-    fn configure(&mut self, config: OAuth2Configuration) {
-        self.send(In::Configure(config))
-    }
-
-    fn start_login(&mut self) {
-        self.send(In::Login)
-    }
-
-    fn request_state(&mut self) {
-        self.send(In::RequestState)
-    }
-
-    fn logout(&mut self) {
-        self.send(In::Logout)
-    }
 }

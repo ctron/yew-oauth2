@@ -1,29 +1,26 @@
-use crate::agent::{OAuth2Bridge, OAuth2Configuration, OAuth2Operations, Out};
-use crate::prelude::OAuth2Context;
-use oauth2::url::{ParseError, Url};
+use crate::{
+    agent::{AgentConfiguration, OAuth2Bridge, OAuth2Operations, Out},
+    config::OAuth2Configuration,
+    context::OAuth2Context,
+};
 use std::time::Duration;
 use yew::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
-    pub client_id: String,
-    pub auth_url: String,
-    #[prop_or_default]
-    pub token_url: Option<String>,
-
-    #[prop_or("openid".to_string())]
-    pub scopes: String,
-
-    #[prop_or_default]
-    pub children: Children,
+    pub config: OAuth2Configuration,
 
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
+
+    #[prop_or_default]
+    pub children: Children,
 }
 
 pub struct OAuth2 {
     context: OAuth2Context,
     agent: OAuth2Bridge,
+    config: AgentConfiguration,
 }
 
 pub enum Msg {
@@ -35,16 +32,18 @@ impl Component for OAuth2 {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let config = Self::make_config(ctx.props()).expect("Create client");
         let mut agent = OAuth2Bridge::new(ctx.link().batch_callback(|out| match out {
             Out::ContextUpdate(context) => vec![Msg::Context(context)],
             _ => vec![],
         }));
-        agent.init(config);
+
+        let config = Self::make_config(ctx.props());
+        agent.init(config.clone());
 
         Self {
             context: OAuth2Context::NotInitialized,
             agent,
+            config,
         }
     }
 
@@ -61,8 +60,13 @@ impl Component for OAuth2 {
     }
 
     fn changed(&mut self, ctx: &Context<Self>) -> bool {
-        let config = Self::make_config(ctx.props()).expect("Create client");
-        self.agent.init(config);
+        let config = Self::make_config(ctx.props());
+        if self.config != config {
+            // only reconfigure agent when necessary
+            self.agent.configure(config.clone());
+            self.config = config;
+        }
+
         true
     }
 
@@ -78,19 +82,10 @@ impl Component for OAuth2 {
 }
 
 impl OAuth2 {
-    fn make_config(props: &Props) -> Result<OAuth2Configuration, ParseError> {
-        Ok(OAuth2Configuration {
-            client_id: props.client_id.clone(),
-            client_secret: None,
-            auth_url: Url::parse(&props.auth_url)?,
-            token_url: props.token_url.as_deref().map(Url::parse).transpose()?,
-            scopes: props
-                .scopes
-                .split(' ')
-                .filter(|s| s.is_empty())
-                .map(ToString::to_string)
-                .collect(),
+    fn make_config(props: &Props) -> AgentConfiguration {
+        AgentConfiguration {
+            config: props.config.clone(),
             grace_period: props.grace_period,
-        })
+        }
     }
 }

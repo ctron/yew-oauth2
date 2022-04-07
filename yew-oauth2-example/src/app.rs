@@ -39,9 +39,14 @@ impl Component for Application {
             <h1> { "OAuth2 login example" } </h1>
 
             <OAuth2
-                client_id="frontend"
-                auth_url="https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/auth"
-                token_url="https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/token"
+                config={
+                    Config {
+                        client_id: "frontend".into(),
+                        auth_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/auth".into(),
+                        token_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/token".into(),
+                        scopes: vec![],
+                    }
+                }
                 >
                 <Failure>
                     <ul>
