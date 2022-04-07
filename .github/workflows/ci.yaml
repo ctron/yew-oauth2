@@ -25,6 +25,9 @@ jobs:
           target: wasm32-unknown-unknown
           override: true
 
+      - run: |
+          cargo generate-lockfile
+
       - uses: actions/cache@v3
         with:
           path: |
