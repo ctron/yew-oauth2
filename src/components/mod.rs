@@ -3,16 +3,12 @@ mod failure;
 mod noauth;
 mod oauth2;
 mod redirect;
-#[cfg(feature = "yew-router-nested")]
-mod router;
 
 pub use self::oauth2::*;
 pub use auth::*;
 pub use failure::*;
 pub use noauth::*;
 pub use redirect::*;
-#[cfg(feature = "yew-router-nested")]
-pub use router::*;
 
 use crate::prelude::*;
 use yew::prelude::*;
