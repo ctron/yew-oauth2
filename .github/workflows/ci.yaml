@@ -27,6 +27,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           target: wasm32-unknown-unknown
           override: true
+          components: rustfmt, clippy
 
       - run: |
           cargo generate-lockfile
