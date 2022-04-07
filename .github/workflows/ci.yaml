@@ -52,15 +52,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-
-      - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+          args: -- --target wasm32-unknown-unknown
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: -- -D warnings --target wasm32-unknown-unknown
 
