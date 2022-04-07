@@ -1,0 +1,33 @@
+[package]
+name = "yew-oauth2"
+version = "0.1.0"
+authors = ["Jens Reimann <jreimann@redhat.com>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "OAuth2  components for Yew"
+repository = "https://github.com/ctron/yew-oauth2"
+categories = ["wasm", "web-programming", "gui"]
+keywords = ["yew", "oauth2", "web", "html"]
+readme = "README.md"
+
+[dependencies]
+num-traits = "0.2"
+gloo-storage = "0.2"
+gloo-timers = "0.2"
+gloo-utils = "0.1"
+js-sys = "0.3"
+log = "0.4"
+oauth2 = "4"
+wasm-bindgen-futures = "0.4"
+yew = "0.19"
+yew-agent = "0.1"
+wasm-bindgen = "0.2"
+
+web-sys = { version = "0.3", features = [
+    "Window",
+] }
+
+yew-router-nested = { version = "0.16.1", optional = true }
+
+[features]
+rotuer = ["yew-router-nested"]

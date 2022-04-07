@@ -1,0 +1,16 @@
+[package]
+name = "yew-oauth2-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+yew-oauth2 = { path = ".." }
+
+chrono = { version = "0.4", features = ["wasmbind"] }
+gloo-timers = "0.2"
+humantime = "2"
+log = { version = "0.4", features = [] }
+wasm-bindgen = "0.2.79"
+wasm-logger = "0.2"
+yew = "0.19"
+yew-router = { version = "0.16", package = "yew-router-nested" }
