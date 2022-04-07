@@ -101,7 +101,7 @@ where
                 }
                 Reason::Expired | Reason::Logout => {
                     // expired or logged out explicitly, then redirect to logout page
-                    R::logout(&ctx.props());
+                    R::logout(ctx.props());
                 }
             },
         }

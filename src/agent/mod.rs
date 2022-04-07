@@ -64,11 +64,7 @@ pub struct AgentConfiguration {
 
 #[derive(Debug)]
 pub enum Msg {
-    Configure {
-        client: BasicClient,
-        config: InnerConfig,
-    },
-    ConfigurationError(OAuth2Error),
+    Configure(Box<Result<(BasicClient, InnerConfig), OAuth2Error>>),
     Change(OAuth2Context),
     Refresh,
 }
@@ -128,31 +124,33 @@ impl Agent for OAuth2Agent {
         log::debug!("Update: {:?}", msg);
 
         match msg {
-            Self::Message::Configure { config, client } => {
-                self.client = Some(client);
-                self.config = Some(config);
+            Self::Message::Configure(outcome) => match *outcome {
+                Ok((client, config)) => {
+                    self.client = Some(client);
+                    self.config = Some(config);
 
-                if matches!(self.state, OAuth2Context::NotInitialized) {
-                    let detected = self.detect_state();
-                    log::debug!("Detected state: {detected:?}");
-                    match detected {
-                        Ok(true) => {}
-                        Ok(false) => {
-                            self.update_state(OAuth2Context::NotAuthenticated {
-                                reason: Reason::NewSession,
-                            });
-                        }
-                        Err(err) => {
-                            self.update_state(err.into());
+                    if matches!(self.state, OAuth2Context::NotInitialized) {
+                        let detected = self.detect_state();
+                        log::debug!("Detected state: {detected:?}");
+                        match detected {
+                            Ok(true) => {}
+                            Ok(false) => {
+                                self.update_state(OAuth2Context::NotAuthenticated {
+                                    reason: Reason::NewSession,
+                                });
+                            }
+                            Err(err) => {
+                                self.update_state(err.into());
+                            }
                         }
                     }
                 }
-            }
-            Self::Message::ConfigurationError(err) => {
-                if matches!(self.state, OAuth2Context::NotInitialized) {
-                    self.update_state(err.into());
+                Err(err) => {
+                    if matches!(self.state, OAuth2Context::NotInitialized) {
+                        self.update_state(err.into());
+                    }
                 }
-            }
+            },
             Self::Message::Change(state) => {
                 self.update_state(state);
             }
@@ -175,14 +173,7 @@ impl Agent for OAuth2Agent {
             Self::Input::Init(config) | Self::Input::Configure(config) => {
                 let link = self.link.clone();
                 spawn_local(async move {
-                    match Self::make_client(config).await {
-                        Ok((client, config)) => {
-                            link.send_message(Msg::Configure { client, config });
-                        }
-                        Err(err) => {
-                            link.send_message(Msg::ConfigurationError(err));
-                        }
-                    }
+                    link.send_message(Msg::Configure(Box::new(Self::make_client(config).await)));
                 });
             }
             Self::Input::Login => {
