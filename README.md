@@ -2,7 +2,6 @@
 
 [![docs.rs](https://docs.rs/yew-oauth2/badge.svg)](https://docs.rs/yew-oauth2)
 [![CI](https://github.com/ctron/yew-oauth2/workflows/CI/badge.svg)](https://github.com/ctron/yew-oauth2/actions?query=workflow%3A%22CI%22)
-[![Matrix](https://img.shields.io/matrix/drogue-iot:matrix.org)](https://matrix.to/#/#drogue-iot:matrix.org)
 
 Add to your `Cargo.toml`:
 
