@@ -14,7 +14,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          - 1.56
+          # we need 1.58 as it has format strings
+          - 1.58
 
     steps:
 
