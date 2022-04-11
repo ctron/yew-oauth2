@@ -35,30 +35,39 @@ pub enum Reason {
 }
 
 /// Helper to get an unzipped version of the context.
-pub trait Unzipped {
-    fn unzipped(
+pub trait UnzippedWith {
+    fn unzipped_with(
         &self,
         callback: Callback<OAuth2Context>,
     ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>);
 }
 
-impl<C> Unzipped for Context<C>
+/// Helper to get an unzipped version of the context.
+pub trait Unzipped {
+    type Message;
+
+    fn unzipped<F>(&self, f: F) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>)
+    where
+        F: Fn(OAuth2Context) -> Self::Message + 'static;
+}
+
+impl<C> UnzippedWith for Context<C>
 where
     C: Component,
 {
-    fn unzipped(
+    fn unzipped_with(
         &self,
         callback: Callback<OAuth2Context>,
     ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>) {
-        self.link().unzipped(callback)
+        self.link().unzipped_with(callback)
     }
 }
 
-impl<C> Unzipped for Scope<C>
+impl<C> UnzippedWith for Scope<C>
 where
     C: Component,
 {
-    fn unzipped(
+    fn unzipped_with(
         &self,
         callback: Callback<OAuth2Context>,
     ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>) {
@@ -66,5 +75,33 @@ where
             Some((auth, handle)) => (Some(auth), Some(handle)),
             None => (None, None),
         }
+    }
+}
+
+impl<C> Unzipped for Context<C>
+where
+    C: Component,
+{
+    type Message = C::Message;
+
+    fn unzipped<F>(&self, f: F) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>)
+    where
+        F: Fn(OAuth2Context) -> Self::Message + 'static,
+    {
+        self.unzipped(f)
+    }
+}
+
+impl<C> Unzipped for Scope<C>
+where
+    C: Component,
+{
+    type Message = C::Message;
+
+    fn unzipped<F>(&self, f: F) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>)
+    where
+        F: Fn(OAuth2Context) -> Self::Message + 'static,
+    {
+        self.unzipped_with(self.callback(f))
     }
 }
