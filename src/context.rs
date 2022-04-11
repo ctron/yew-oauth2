@@ -1,3 +1,7 @@
+use yew::context::ContextHandle;
+use yew::html::Scope;
+use yew::{Callback, Component, Context};
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OAuth2Context {
     NotInitialized,
@@ -12,9 +16,55 @@ pub enum OAuth2Context {
     Failed(String),
 }
 
+impl OAuth2Context {
+    /// Get the access token, if the context is [`OAuth2Context::Authenticated`]
+    pub fn access_token(&self) -> Option<String> {
+        match self {
+            Self::Authenticated { access_token, .. } => Some(access_token.clone()),
+            _ => None,
+        }
+    }
+}
+
+/// The reason why the context is un-authenticated.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reason {
     NewSession,
     Expired,
     Logout,
+}
+
+/// Helper to get an unzipped version of the context.
+pub trait Unzipped {
+    fn unzipped(
+        &self,
+        callback: Callback<OAuth2Context>,
+    ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>);
+}
+
+impl<C> Unzipped for Context<C>
+where
+    C: Component,
+{
+    fn unzipped(
+        &self,
+        callback: Callback<OAuth2Context>,
+    ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>) {
+        self.link().unzipped(callback)
+    }
+}
+
+impl<C> Unzipped for Scope<C>
+where
+    C: Component,
+{
+    fn unzipped(
+        &self,
+        callback: Callback<OAuth2Context>,
+    ) -> (Option<OAuth2Context>, Option<ContextHandle<OAuth2Context>>) {
+        match self.context(callback) {
+            Some((auth, handle)) => (Some(auth), Some(handle)),
+            None => (None, None),
+        }
+    }
 }
