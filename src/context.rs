@@ -88,7 +88,7 @@ where
     where
         F: Fn(OAuth2Context) -> Self::Message + 'static,
     {
-        self.unzipped(f)
+        self.link().unzipped(f)
     }
 }
 
