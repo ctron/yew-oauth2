@@ -28,6 +28,7 @@ web-sys = { version = "0.3", features = [
 ] }
 
 yew-router-nested = { version = "0.16.1", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
 rotuer = ["yew-router-nested"]

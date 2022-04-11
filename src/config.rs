@@ -7,10 +7,15 @@ pub enum OAuth2Configuration {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
     pub client_id: String,
     pub auth_url: String,
     pub token_url: String,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Vec::is_empty")
+    )]
     pub scopes: Vec<String>,
 }
 
@@ -38,10 +43,16 @@ impl IntoPropValue<OAuth2Configuration> for Config {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct KeycloakConfig {
     pub client_id: String,
     pub url: String,
     pub realm: String,
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "String::is_empty")
+    )]
     pub scopes: String,
 }
 
