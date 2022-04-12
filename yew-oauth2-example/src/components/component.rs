@@ -41,7 +41,7 @@ impl Component for ViewAuthInfoComponent {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html!(
             if let Some(auth) = self.auth.clone() {
-                <h1> { "Component example"} </h1>
+                <h2> { "Component example"} </h2>
                 <ViewAuthInfo {auth} />
             } else {
                 { "OAuth2 context not found." }

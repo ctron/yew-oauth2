@@ -1,6 +1,6 @@
 [package]
 name = "yew-oauth2"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Jens Reimann <jreimann@redhat.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,6 +11,7 @@ keywords = ["yew", "oauth2", "web", "html"]
 readme = "README.md"
 
 [dependencies]
+async-trait = "0.1"
 gloo-storage = "0.2"
 gloo-timers = "0.2"
 gloo-utils = "0.1"

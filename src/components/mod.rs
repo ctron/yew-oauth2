@@ -1,23 +1,23 @@
-mod auth;
-mod failure;
-mod noauth;
-mod oauth2;
-mod redirect;
+pub mod auth;
+pub mod context;
+pub mod failure;
+pub mod noauth;
+pub mod redirect;
 
-pub use self::oauth2::*;
+// only put use common components
+
 pub use auth::*;
 pub use failure::*;
 pub use noauth::*;
-pub use redirect::*;
 
-use crate::prelude::*;
+use crate::agent::{Client, OAuth2Dispatcher, OAuth2Operations};
 use yew::prelude::*;
 
 fn missing_context() -> Html {
-    html!(<div> { "Unable to find OAuth2 context! You need to wrap this element into a `OAuth2` component"} </div>)
+    html!(<div> { "Unable to find OAuth2 context! This element needs to be wrapped into an `OAuth2` component somewhere in the hierarchy"} </div>)
 }
 
-fn start_login() {
-    log::info!("Triggering login");
-    OAuth2Dispatcher::new().start_login();
+fn start_login<C: Client>() {
+    log::debug!("Triggering login");
+    OAuth2Dispatcher::<C>::new().start_login();
 }

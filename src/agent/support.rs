@@ -1,48 +1,48 @@
 use super::*;
-use crate::context::OAuth2Context;
+use crate::{agent::Client, context::OAuth2Context};
 use std::ops::{Deref, DerefMut};
 use yew::{html::Scope, Callback, Component};
 use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
-pub struct OAuth2Dispatcher(Dispatcher<OAuth2Agent>);
+pub struct OAuth2Dispatcher<C: Client>(Dispatcher<OAuth2Agent<C>>);
 
-impl OAuth2Dispatcher {
+impl<C: Client> OAuth2Dispatcher<C> {
     pub fn new() -> Self {
         Self(OAuth2Agent::dispatcher())
     }
 }
 
-impl Default for OAuth2Dispatcher {
+impl<C: Client> Default for OAuth2Dispatcher<C> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Deref for OAuth2Dispatcher {
-    type Target = Dispatcher<OAuth2Agent>;
+impl<C: Client> Deref for OAuth2Dispatcher<C> {
+    type Target = Dispatcher<OAuth2Agent<C>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for OAuth2Dispatcher {
+impl<C: Client> DerefMut for OAuth2Dispatcher<C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-pub struct OAuth2Bridge(Box<dyn Bridge<OAuth2Agent>>);
+pub struct OAuth2Bridge<C: Client>(Box<dyn Bridge<OAuth2Agent<C>>>);
 
-impl OAuth2Bridge {
-    pub fn new(callback: Callback<Out>) -> OAuth2Bridge {
+impl<C: Client> OAuth2Bridge<C> {
+    pub fn new(callback: Callback<Out>) -> OAuth2Bridge<C> {
         Self(OAuth2Agent::bridge(callback))
     }
 
-    pub fn from<C, F>(link: &Scope<C>, f: F) -> Self
+    pub fn from<COMP, F>(link: &Scope<COMP>, f: F) -> Self
     where
-        C: Component,
-        F: Fn(OAuth2Context) -> C::Message + 'static,
+        COMP: Component,
+        F: Fn(OAuth2Context) -> COMP::Message + 'static,
     {
         let callback = link.batch_callback(move |msg| match msg {
             Out::ContextUpdate(data) => vec![f(data)],
@@ -52,33 +52,33 @@ impl OAuth2Bridge {
     }
 }
 
-impl Deref for OAuth2Bridge {
-    type Target = Box<dyn Bridge<OAuth2Agent>>;
+impl<C: Client> Deref for OAuth2Bridge<C> {
+    type Target = Box<dyn Bridge<OAuth2Agent<C>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-impl DerefMut for OAuth2Bridge {
+impl<C: Client> DerefMut for OAuth2Bridge<C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-pub trait OAuth2Operations {
-    fn init(&mut self, config: AgentConfiguration);
-    fn configure(&mut self, config: AgentConfiguration);
+pub trait OAuth2Operations<C: Client> {
+    fn init(&mut self, config: AgentConfiguration<C>);
+    fn configure(&mut self, config: AgentConfiguration<C>);
     fn start_login(&mut self);
     fn request_state(&mut self);
     fn logout(&mut self);
 }
 
-impl OAuth2Operations for dyn Bridge<OAuth2Agent> {
-    fn init(&mut self, config: AgentConfiguration) {
+impl<C: Client> OAuth2Operations<C> for dyn Bridge<OAuth2Agent<C>> {
+    fn init(&mut self, config: AgentConfiguration<C>) {
         self.send(In::Init(config))
     }
 
-    fn configure(&mut self, config: AgentConfiguration) {
+    fn configure(&mut self, config: AgentConfiguration<C>) {
         self.send(In::Configure(config))
     }
 

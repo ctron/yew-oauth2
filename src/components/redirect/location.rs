@@ -17,4 +17,14 @@ pub struct LocationProps {
     pub logout_href: String,
 }
 
-pub type LocationRedirect = Redirect<LocationRedirector>;
+pub mod oauth2 {
+    use super::*;
+    use crate::agent::OAuth2Client;
+    pub type LocationRedirect = Redirect<OAuth2Client, LocationRedirector>;
+}
+
+pub mod openid {
+    use super::*;
+    use crate::agent::OpenIdClient;
+    pub type LocationRedirect = Redirect<OpenIdClient, LocationRedirector>;
+}

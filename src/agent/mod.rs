@@ -3,21 +3,29 @@ mod support;
 pub use support::*;
 
 use crate::{
-    config::OAuth2Configuration,
+    config::{oauth2, openid},
     context::{OAuth2Context, Reason},
 };
-use gloo_storage::{SessionStorage, Storage};
-use gloo_timers::callback::Timeout;
-use gloo_utils::{history, window};
-use js_sys::Date;
-use num_traits::cast::ToPrimitive;
-use oauth2::{
+use ::oauth2::{
     basic::{BasicClient, BasicTokenResponse},
     reqwest::async_http_client,
     url::Url,
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, PkceCodeVerifier,
     RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
 };
+use async_trait::async_trait;
+use gloo_storage::{SessionStorage, Storage};
+use gloo_timers::callback::Timeout;
+use gloo_utils::{history, window};
+use js_sys::Date;
+use num_traits::cast::ToPrimitive;
+use openidconnect::core::CoreGenderClaim;
+use openidconnect::{
+    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata, CoreTokenResponse},
+    EmptyAdditionalClaims, IdTokenClaims, IssuerUrl, Nonce,
+};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display, Formatter},
@@ -56,25 +64,36 @@ impl From<OAuth2Error> for OAuth2Context {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AgentConfiguration {
-    pub config: OAuth2Configuration,
+#[derive(Clone, Debug)]
+pub struct AgentConfiguration<C: Client> {
+    pub config: C::Configuration,
+    pub scopes: Vec<String>,
     pub grace_period: Duration,
 }
 
+impl<C: Client> PartialEq for AgentConfiguration<C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.config == other.config
+            && self.scopes == other.scopes
+            && self.grace_period == other.grace_period
+    }
+}
+
+impl<C: Client> Eq for AgentConfiguration<C> {}
+
 #[derive(Debug)]
-pub enum Msg {
-    Configure(Box<Result<(BasicClient, InnerConfig), OAuth2Error>>),
-    Change(OAuth2Context),
+pub enum Msg<C: Client> {
+    Configure(Box<Result<(C, InnerConfig), OAuth2Error>>),
+    Change((OAuth2Context, Option<C::SessionState>)),
     Refresh,
 }
 
 #[derive(Debug)]
-pub enum In {
+pub enum In<C: Client> {
     /// Initialize and configure the agent.
-    Init(AgentConfiguration),
+    Init(AgentConfiguration<C>),
     // Reconfigure the agent.
-    Configure(AgentConfiguration),
+    Configure(AgentConfiguration<C>),
     Login,
     RequestState,
     Logout,
@@ -88,34 +107,345 @@ pub enum Out {
 
 #[derive(Clone, Debug)]
 pub struct InnerConfig {
-    scopes: Vec<Scope>,
+    scopes: Vec<String>,
     grace_period: Duration,
 }
 
-pub struct OAuth2Agent {
+pub struct OAuth2Agent<C: Client> {
     link: AgentLink<Self>,
-    client: Option<BasicClient>,
+    client: Option<C>,
     config: Option<InnerConfig>,
 
     clients: HashSet<HandlerId>,
     state: OAuth2Context,
+    session_state: Option<C::SessionState>,
 
     timeout: Option<Timeout>,
 }
 
-impl Agent for OAuth2Agent {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LoginContext<S>
+where
+    S: Serialize,
+{
+    pub url: Url,
+    pub csrf_token: String,
+    pub state: S,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LoginState {
+    pub pkce_verifier: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenIdLoginState {
+    pub pkce_verifier: String,
+    pub nonce: String,
+}
+
+#[async_trait(?Send)]
+pub trait Client: 'static + Sized + Clone + Debug {
+    type TokenResponse;
+    type Configuration: Clone + Debug + PartialEq;
+    type LoginState: Debug + Serialize + DeserializeOwned;
+    type SessionState: Clone + Debug;
+
+    async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error>;
+
+    fn set_redirect_uri(self, url: Url) -> Self;
+
+    fn make_login_context(
+        &self,
+        config: &InnerConfig,
+        redirect_url: Url,
+    ) -> Result<LoginContext<Self::LoginState>, OAuth2Error>;
+
+    async fn exchange_code(
+        &self,
+        code: String,
+        login_state: Self::LoginState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error>;
+
+    async fn exchange_refresh_token(
+        &self,
+        refresh_token: String,
+        session_state: Self::SessionState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error>;
+}
+
+#[derive(Clone, Debug)]
+pub struct OAuth2Client {
+    client: ::oauth2::basic::BasicClient,
+}
+
+impl OAuth2Client {
+    fn make_authenticated(result: BasicTokenResponse) -> OAuth2Context {
+        OAuth2Context::Authenticated {
+            access_token: result.access_token().secret().to_string(),
+            refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
+            expires: expires(result.expires_in()),
+            claims: None,
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl Client for OAuth2Client {
+    type TokenResponse = ::oauth2::basic::BasicTokenResponse;
+    type Configuration = oauth2::Config;
+    type LoginState = LoginState;
+    type SessionState = ();
+
+    async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
+        let client = BasicClient::new(
+            ClientId::new(config.client_id),
+            None,
+            AuthUrl::new(config.auth_url)
+                .map_err(|err| OAuth2Error::Configuration(format!("invalid auth URL: {err}")))?,
+            Some(
+                TokenUrl::new(config.token_url).map_err(|err| {
+                    OAuth2Error::Configuration(format!("invalid token URL: {err}"))
+                })?,
+            ),
+        );
+
+        Ok(Self { client })
+    }
+
+    fn set_redirect_uri(mut self, url: Url) -> Self {
+        self.client = self.client.set_redirect_uri(RedirectUrl::from_url(url));
+        self
+    }
+
+    fn make_login_context(
+        &self,
+        config: &InnerConfig,
+        redirect_url: Url,
+    ) -> Result<LoginContext<Self::LoginState>, OAuth2Error> {
+        let client = self
+            .client
+            .clone()
+            .set_redirect_uri(RedirectUrl::from_url(redirect_url));
+
+        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+
+        let (url, state) = client
+            .authorize_url(CsrfToken::new_random)
+            .add_scopes(
+                config
+                    .scopes
+                    .iter()
+                    .map(|s| Scope::new(s.to_string()))
+                    .collect::<Vec<_>>(),
+            )
+            .set_pkce_challenge(pkce_challenge)
+            .url();
+
+        Ok(LoginContext {
+            url,
+            csrf_token: state.secret().clone(),
+            state: LoginState {
+                pkce_verifier: pkce_verifier.secret().clone(),
+            },
+        })
+    }
+
+    async fn exchange_code(
+        &self,
+        code: String,
+        LoginState { pkce_verifier }: LoginState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error> {
+        let pkce_verifier = PkceCodeVerifier::new(pkce_verifier);
+
+        let result = self
+            .client
+            .exchange_code(AuthorizationCode::new(code))
+            .set_pkce_verifier(pkce_verifier)
+            .request_async(async_http_client)
+            .await
+            .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
+
+        log::debug!("Exchange code result: {:?}", result);
+
+        Ok((Self::make_authenticated(result), ()))
+    }
+
+    async fn exchange_refresh_token(
+        &self,
+        refresh_token: String,
+        session_state: Self::SessionState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error> {
+        let result = self
+            .client
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(async_http_client)
+            .await
+            .map_err(|err| {
+                OAuth2Error::LoginResult(format!("failed to exchange refresh token: {err}"))
+            })?;
+
+        Ok((Self::make_authenticated(result), session_state))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenIdClient {
+    client: openidconnect::core::CoreClient,
+}
+
+fn expires(expires_in: Option<Duration>) -> Option<u64> {
+    if let Some(expires_in) = expires_in {
+        let expires = ((Date::now() / 1000f64) + expires_in.as_secs_f64())
+            .to_u64()
+            .unwrap_or(u64::MAX);
+        Some(expires)
+    } else {
+        None
+    }
+}
+
+#[async_trait(? Send)]
+impl Client for OpenIdClient {
+    type TokenResponse = CoreTokenResponse;
+    type Configuration = openid::Config;
+    type LoginState = OpenIdLoginState;
+    type SessionState = IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>;
+
+    async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
+        let issuer = IssuerUrl::new(config.issuer_url)
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
+
+        let metadata = CoreProviderMetadata::discover_async(issuer, async_http_client)
+            .await
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
+            })?;
+
+        let client =
+            CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
+
+        Ok(Self { client })
+    }
+
+    fn set_redirect_uri(mut self, url: Url) -> Self {
+        self.client = self.client.set_redirect_uri(RedirectUrl::from_url(url));
+        self
+    }
+
+    fn make_login_context(
+        &self,
+        config: &InnerConfig,
+        redirect_url: Url,
+    ) -> Result<LoginContext<Self::LoginState>, OAuth2Error> {
+        let client = self
+            .client
+            .clone()
+            .set_redirect_uri(RedirectUrl::from_url(redirect_url));
+
+        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+
+        let mut req = client.authorize_url(
+            CoreAuthenticationFlow::AuthorizationCode,
+            CsrfToken::new_random,
+            Nonce::new_random,
+        );
+
+        for scope in &config.scopes {
+            req = req.add_scope(Scope::new(scope.clone()));
+        }
+
+        let (url, state, nonce) = req.set_pkce_challenge(pkce_challenge).url();
+
+        Ok(LoginContext {
+            url,
+            csrf_token: state.secret().clone(),
+            state: OpenIdLoginState {
+                pkce_verifier: pkce_verifier.secret().clone(),
+                nonce: nonce.secret().clone(),
+            },
+        })
+    }
+
+    async fn exchange_code(
+        &self,
+        code: String,
+        state: Self::LoginState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error> {
+        let pkce_verifier = PkceCodeVerifier::new(state.pkce_verifier);
+
+        let result = self
+            .client
+            .exchange_code(AuthorizationCode::new(code))
+            .set_pkce_verifier(pkce_verifier)
+            .request_async(async_http_client)
+            .await
+            .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
+
+        log::debug!("Exchange code result: {:?}", result);
+
+        let id_token = result.extra_fields().id_token().ok_or_else(|| {
+            OAuth2Error::LoginResult(format!("Server did not return an ID token"))
+        })?;
+
+        let claims = id_token
+            .clone()
+            .into_claims(&self.client.id_token_verifier(), &Nonce::new(state.nonce))
+            .map_err(|err| OAuth2Error::LoginResult(format!("failed to verify ID token: {err}")))?;
+
+        Ok((
+            OAuth2Context::Authenticated {
+                access_token: result.access_token().secret().to_string(),
+                refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
+                expires: expires(result.expires_in()),
+                claims: Some(claims.clone()),
+            },
+            claims,
+        ))
+    }
+
+    async fn exchange_refresh_token(
+        &self,
+        refresh_token: String,
+        session_state: Self::SessionState,
+    ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error> {
+        let result = self
+            .client
+            .exchange_refresh_token(&RefreshToken::new(refresh_token))
+            .request_async(async_http_client)
+            .await
+            .map_err(|err| {
+                OAuth2Error::LoginResult(format!("failed to exchange refresh token: {err}"))
+            })?;
+
+        Ok((
+            OAuth2Context::Authenticated {
+                access_token: result.access_token().secret().to_string(),
+                refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
+                expires: expires(result.expires_in()),
+                claims: Some(session_state.clone()),
+            },
+            session_state,
+        ))
+    }
+}
+
+impl<C: Client> Agent for OAuth2Agent<C> {
     type Reach = Context<Self>;
-    type Message = Msg;
-    type Input = In;
+    type Message = Msg<C>;
+    type Input = In<C>;
     type Output = Out;
 
     fn create(link: AgentLink<Self>) -> Self {
+        log::debug!("Creating new agent");
+
         Self {
             link,
             client: None,
             config: None,
             clients: Default::default(),
             state: OAuth2Context::NotInitialized,
+            session_state: None,
             timeout: None,
         }
     }
@@ -126,6 +456,8 @@ impl Agent for OAuth2Agent {
         match msg {
             Self::Message::Configure(outcome) => match *outcome {
                 Ok((client, config)) => {
+                    log::debug!("Client created");
+
                     self.client = Some(client);
                     self.config = Some(config);
 
@@ -135,24 +467,28 @@ impl Agent for OAuth2Agent {
                         match detected {
                             Ok(true) => {}
                             Ok(false) => {
-                                self.update_state(OAuth2Context::NotAuthenticated {
-                                    reason: Reason::NewSession,
-                                });
+                                self.update_state(
+                                    OAuth2Context::NotAuthenticated {
+                                        reason: Reason::NewSession,
+                                    },
+                                    None,
+                                );
                             }
                             Err(err) => {
-                                self.update_state(err.into());
+                                self.update_state(err.into(), None);
                             }
                         }
                     }
                 }
                 Err(err) => {
+                    log::debug!("Failed to configure client: {err}");
                     if matches!(self.state, OAuth2Context::NotInitialized) {
-                        self.update_state(err.into());
+                        self.update_state(err.into(), None);
                     }
                 }
             },
-            Self::Message::Change(state) => {
-                self.update_state(state);
+            Self::Message::Change((state, session_state)) => {
+                self.update_state(state, session_state);
             }
             Self::Message::Refresh => {
                 self.refresh();
@@ -179,6 +515,7 @@ impl Agent for OAuth2Agent {
             Self::Input::Login => {
                 // start the login
                 if let Err(err) = self.start_login() {
+                    log::debug!("Failed to start login: {err}");
                     if id.is_respondable() {
                         self.link.respond(id, Out::Error(err));
                     }
@@ -189,9 +526,12 @@ impl Agent for OAuth2Agent {
                     .respond(id, Out::ContextUpdate(self.state.clone()));
             }
             Self::Input::Logout => {
-                self.update_state(OAuth2Context::NotAuthenticated {
-                    reason: Reason::Logout,
-                });
+                self.update_state(
+                    OAuth2Context::NotAuthenticated {
+                        reason: Reason::Logout,
+                    },
+                    None,
+                );
             }
         }
     }
@@ -204,11 +544,11 @@ impl Agent for OAuth2Agent {
 }
 
 const STORAGE_KEY_CSRF_TOKEN: &str = "ctron/oauth2/csrfToken";
-const STORAGE_KEY_PKCE_VERIFIER: &str = "ctron/oauth2/pkceVerifier";
+const STORAGE_KEY_LOGIN_STATE: &str = "ctron/oauth2/loginState";
 const STORAGE_KEY_REDIRECT_URL: &str = "ctron/oauth2/redirectUrl";
 
-impl OAuth2Agent {
-    fn update_state(&mut self, state: OAuth2Context) {
+impl<C: Client> OAuth2Agent<C> {
+    fn update_state(&mut self, state: OAuth2Context, session_state: Option<C::SessionState>) {
         log::debug!("update state: {state:?}");
 
         if let OAuth2Context::Authenticated {
@@ -245,61 +585,18 @@ impl OAuth2Agent {
         }
 
         self.state = state;
+        self.session_state = session_state;
     }
 
-    async fn make_client(
-        config: AgentConfiguration,
-    ) -> Result<(BasicClient, InnerConfig), OAuth2Error> {
-        match config.config {
-            OAuth2Configuration::Provided(client_config) => {
-                let client = BasicClient::new(
-                    ClientId::new(client_config.client_id),
-                    None,
-                    AuthUrl::new(client_config.auth_url).map_err(|err| {
-                        OAuth2Error::Configuration(format!("invalid auth URL: {err}"))
-                    })?,
-                    Some(TokenUrl::new(client_config.token_url).map_err(|err| {
-                        OAuth2Error::Configuration(format!("invalid token URL: {err}"))
-                    })?),
-                );
+    async fn make_client(config: AgentConfiguration<C>) -> Result<(C, InnerConfig), OAuth2Error> {
+        let client = C::from_config(config.config).await?;
 
-                let config = InnerConfig {
-                    scopes: client_config.scopes.into_iter().map(Scope::new).collect(),
-                    grace_period: config.grace_period,
-                };
+        let inner = InnerConfig {
+            scopes: config.scopes,
+            grace_period: config.grace_period,
+        };
 
-                Ok((client, config))
-            }
-        }
-    }
-
-    fn make_auth_url(&self) -> Result<(Url, CsrfToken, PkceCodeVerifier, String), OAuth2Error> {
-        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-
-        let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
-        let client = client
-            .clone()
-            .set_redirect_uri(RedirectUrl::from_url(redirect_url.clone()));
-
-        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-
-        let (url, state) = client
-            .authorize_url(CsrfToken::new_random)
-            .add_scopes(
-                self.config
-                    .as_ref()
-                    .map(|c| {
-                        c.scopes
-                            .iter()
-                            .map(|s| oauth2::Scope::new(s.to_string()))
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default(),
-            )
-            .set_pkce_challenge(pkce_challenge)
-            .url();
-
-        Ok((url, state, pkce_verifier, redirect_url.into()))
+        Ok((client, inner))
     }
 
     fn current_url() -> Result<Url, String> {
@@ -311,23 +608,30 @@ impl OAuth2Agent {
     }
 
     fn start_login(&self) -> Result<(), OAuth2Error> {
-        let (url, state, pkce_verifier, redirect_url) = self.make_auth_url()?;
+        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+        let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+        let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
 
-        SessionStorage::set(STORAGE_KEY_CSRF_TOKEN, state.secret())
+        let login_context = client.make_login_context(config, redirect_url.clone())?;
+
+        SessionStorage::set(STORAGE_KEY_CSRF_TOKEN, login_context.csrf_token)
             .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
 
-        SessionStorage::set(STORAGE_KEY_PKCE_VERIFIER, pkce_verifier.secret())
+        SessionStorage::set(STORAGE_KEY_LOGIN_STATE, login_context.state)
             .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
 
         SessionStorage::set(STORAGE_KEY_REDIRECT_URL, redirect_url)
             .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
 
-        window().location().set_href(url.as_str()).map_err(|err| {
-            OAuth2Error::StartLogin(
-                err.as_string()
-                    .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
-            )
-        })?;
+        window()
+            .location()
+            .set_href(login_context.url.as_str())
+            .map_err(|err| {
+                OAuth2Error::StartLogin(
+                    err.as_string()
+                        .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
+                )
+            })?;
 
         Ok(())
     }
@@ -379,22 +683,27 @@ impl OAuth2Agent {
 
             let link = self.link.clone();
 
-            let pkce_verifier = Self::get_from_store(STORAGE_KEY_PKCE_VERIFIER)?;
-            log::debug!("PKCE verifier: {pkce_verifier}");
-            let pkce_verifier = PkceCodeVerifier::new(pkce_verifier);
+            let state: C::LoginState =
+                SessionStorage::get(STORAGE_KEY_LOGIN_STATE).map_err(|err| {
+                    OAuth2Error::Storage(format!("Failed to load login state: {err}"))
+                })?;
+
+            log::debug!("Login state: {state:?}");
 
             let redirect_url = Self::get_from_store(STORAGE_KEY_REDIRECT_URL)?;
             log::debug!("Redirect URL: {redirect_url}");
-            let redirect_url = RedirectUrl::new(redirect_url).map_err(|err| {
+            let redirect_url = Url::parse(&redirect_url).map_err(|err| {
                 OAuth2Error::LoginResult(format!("Failed to parse redirect URL: {err}"))
             })?;
 
             let client = client.clone().set_redirect_uri(redirect_url);
 
             spawn_local(async move {
-                match Self::exchange_code(client, code, pkce_verifier).await {
-                    Ok(state) => link.send_message(Msg::Change(state)),
-                    Err(err) => link.send_message(Msg::Change(err.into())),
+                match client.exchange_code(code, state).await {
+                    Ok((state, session_state)) => {
+                        link.send_message(Msg::Change((state, Some(session_state))))
+                    }
+                    Err(err) => link.send_message(Msg::Change((err.into(), None))),
                 }
             });
             Ok(true)
@@ -418,39 +727,6 @@ impl OAuth2Agent {
         }
     }
 
-    async fn exchange_code(
-        client: BasicClient,
-        code: String,
-        pkce_verifier: PkceCodeVerifier,
-    ) -> Result<OAuth2Context, OAuth2Error> {
-        let result = client
-            .exchange_code(AuthorizationCode::new(code))
-            .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
-            .await
-            .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
-
-        log::debug!("Exchange code result: {:?}", result);
-        Ok(Self::make_authenticated(result))
-    }
-
-    fn make_authenticated(result: BasicTokenResponse) -> OAuth2Context {
-        let expires = if let Some(expires_in) = result.expires_in() {
-            let expires = ((Date::now() / 1000f64) + expires_in.as_secs_f64())
-                .to_u64()
-                .unwrap_or(u64::MAX);
-            Some(expires)
-        } else {
-            None
-        };
-
-        OAuth2Context::Authenticated {
-            access_token: result.access_token().secret().to_string(),
-            refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
-            expires,
-        }
-    }
-
     /// Extract the state from the query.
     fn find_query_state() -> Option<State> {
         if let Ok(url) = Self::current_url() {
@@ -459,7 +735,6 @@ impl OAuth2Agent {
             Some(State {
                 code: query.get("code").map(ToString::to_string),
                 state: query.get("state").map(ToString::to_string),
-                session_state: query.get("session_state").map(ToString::to_string),
                 error: query.get("error").map(ToString::to_string),
             })
         } else {
@@ -468,15 +743,19 @@ impl OAuth2Agent {
     }
 
     fn refresh(&mut self) {
-        let client = if let Some(client) = &self.client {
-            client.clone()
-        } else {
-            // we need to refresh but lost our client
-            self.update_state(OAuth2Context::NotAuthenticated {
-                reason: Reason::Expired,
-            });
-            return;
-        };
+        let (client, session_state) =
+            if let (Some(client), Some(session_state)) = (&self.client, &self.session_state) {
+                (client.clone(), session_state.clone())
+            } else {
+                // we need to refresh but lost our client
+                self.update_state(
+                    OAuth2Context::NotAuthenticated {
+                        reason: Reason::Expired,
+                    },
+                    None,
+                );
+                return;
+            };
 
         if let OAuth2Context::Authenticated {
             refresh_token: Some(refresh_token),
@@ -488,30 +767,17 @@ impl OAuth2Agent {
             let refresh_token = refresh_token.clone();
             let link = self.link.clone();
             spawn_local(async move {
-                match Self::exchange_refresh_token(client, refresh_token).await {
-                    Ok(result) => link.send_message(Msg::Change(result)),
-                    Err(err) => link.send_message(Msg::Change(err.into())),
+                match client
+                    .exchange_refresh_token(refresh_token, session_state)
+                    .await
+                {
+                    Ok((context, session_state)) => {
+                        link.send_message(Msg::Change((context, Some(session_state))))
+                    }
+                    Err(err) => link.send_message(Msg::Change((err.into(), None))),
                 }
             })
         }
-    }
-
-    async fn exchange_refresh_token(
-        client: BasicClient,
-        refresh_token: String,
-    ) -> Result<OAuth2Context, OAuth2Error> {
-        let refresh_token = RefreshToken::new(refresh_token);
-        let result = client
-            .exchange_refresh_token(&refresh_token)
-            .request_async(async_http_client)
-            .await
-            .map_err(|err| {
-                OAuth2Error::LoginResult(format!("failed to exchange refresh token: {err}"))
-            })?;
-
-        log::debug!("Refresh token result: {result:?}");
-
-        Ok(Self::make_authenticated(result))
     }
 
     fn cleanup_url() {
@@ -529,7 +795,5 @@ impl OAuth2Agent {
 struct State {
     code: Option<String>,
     state: Option<String>,
-    #[allow(unused)]
-    session_state: Option<String>,
     error: Option<String>,
 }

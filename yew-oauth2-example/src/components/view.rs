@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yew_oauth2::context::OAuth2Context;
 
-#[derive(Clone, Debug, PartialEq, Eq, Properties)]
+#[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
     pub auth: OAuth2Context,
 }

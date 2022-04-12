@@ -3,12 +3,24 @@ use yew::prelude::*;
 use yew_oauth2::prelude::*;
 use yew_router::prelude::*;
 
+#[cfg(not(feature = "openid"))]
+use yew_oauth2::prelude::oauth2::*;
+#[cfg(feature = "openid")]
+use yew_oauth2::prelude::openid::*;
+
+#[cfg(not(feature = "openid"))]
+use yew_oauth2::agent::OAuth2Client as Client;
+#[cfg(feature = "openid")]
+use yew_oauth2::agent::OpenIdClient as Client;
+
 #[derive(Switch, Debug, Clone, PartialEq, Eq)]
 pub enum AppRoute {
     #[to = "/component"]
     Component,
     #[to = "/function"]
     Function,
+    #[to = "/identity"]
+    Identity,
     #[to = "/"]
     Index,
 }
@@ -28,25 +40,33 @@ impl Component for Application {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let login = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::new().start_login();
+            OAuth2Dispatcher::<Client>::new().start_login();
         });
         let logout = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::new().logout();
+            OAuth2Dispatcher::<Client>::new().logout();
         });
+
+        #[cfg(not(feature = "openid"))]
+        let config = Config {
+            client_id: "frontend".into(),
+            auth_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/auth".into(),
+            token_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/token".into(),
+        };
+
+        #[cfg(feature = "openid")]
+        let config = Config {
+            client_id: "frontend".into(),
+            issuer_url:
+                "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew".into(),
+        };
 
         html!(
             <>
             <h1> { "OAuth2 login example" } </h1>
 
             <OAuth2
-                config={
-                    Config {
-                        client_id: "frontend".into(),
-                        auth_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/auth".into(),
-                        token_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/token".into(),
-                        scopes: vec![],
-                    }
-                }
+                {config}
+                scopes={vec!["openid".to_string()]}
                 >
                 <Failure>
                     <ul>
@@ -61,6 +81,7 @@ impl Component for Application {
                         <li><RouterAnchor<AppRoute> route={AppRoute::Index}> { "Index" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Component}> { "Component" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Function}> { "Function" } </RouterAnchor<AppRoute>></li>
+                        <li><RouterAnchor<AppRoute> route={AppRoute::Identity}> { "Identity" } </RouterAnchor<AppRoute>></li>
                     </ul>
                     <Expiration/>
                     <Router<AppRoute>
@@ -69,6 +90,7 @@ impl Component for Application {
                                 AppRoute::Index => html!(<p> { "You are logged in"} </p>),
                                 AppRoute::Component => html!(<ViewAuthInfoComponent />),
                                 AppRoute::Function => html!(<ViewAuthInfoFunctional />),
+                                AppRoute::Identity => html!(<ViewIdentity />),
                             }
                         })}
                     />

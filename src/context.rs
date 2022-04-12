@@ -1,16 +1,19 @@
-use yew::context::ContextHandle;
-use yew::html::Scope;
-use yew::{Callback, Component, Context};
+use openidconnect::core::CoreGenderClaim;
+use openidconnect::{EmptyAdditionalClaims, IdTokenClaims};
+use yew::{context::ContextHandle, html::Scope, prelude::*};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum OAuth2Context {
     NotInitialized,
     NotAuthenticated {
         reason: Reason,
     },
     Authenticated {
+        /// The access token
         access_token: String,
+        /// An optional refresh token
         refresh_token: Option<String>,
+        claims: Option<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>,
         expires: Option<u64>,
     },
     Failed(String),

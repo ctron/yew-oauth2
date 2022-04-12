@@ -33,4 +33,14 @@ where
     pub logout: R,
 }
 
-pub type RouterRedirect<R> = Redirect<RouterRedirector<R>>;
+pub mod oauth2 {
+    use super::*;
+    use crate::agent::OAuth2Client;
+    pub type RouterRedirect<R> = Redirect<OAuth2Client, RouterRedirector<R>>;
+}
+
+pub mod openid {
+    use super::*;
+    use crate::agent::OpenIdClient;
+    pub type RouterRedirect<R> = Redirect<OpenIdClient, RouterRedirector<R>>;
+}

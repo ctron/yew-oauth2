@@ -1,12 +1,9 @@
-mod location;
+pub mod location;
 #[cfg(feature = "yew-router-nested")]
-mod router;
-
-pub use location::*;
-#[cfg(feature = "yew-router-nested")]
-pub use router::*;
+pub mod router;
 
 use super::missing_context;
+use crate::agent::Client;
 use crate::context::{OAuth2Context, Reason};
 use std::marker::PhantomData;
 use yew::{context::ContextHandle, prelude::*};
@@ -22,17 +19,19 @@ pub enum Msg {
     Context(OAuth2Context),
 }
 
-pub struct Redirect<R>
+pub struct Redirect<C, R>
 where
+    C: Client,
     R: Redirector,
 {
     auth: Option<OAuth2Context>,
     _handler: Option<ContextHandle<OAuth2Context>>,
-    _marker: PhantomData<R>,
+    _marker: PhantomData<(C, R)>,
 }
 
-impl<R> Component for Redirect<R>
+impl<C, R> Component for Redirect<C, R>
 where
+    C: Client,
     R: Redirector,
 {
     type Message = Msg;
@@ -79,8 +78,9 @@ where
     }
 }
 
-impl<R> Redirect<R>
+impl<C, R> Redirect<C, R>
 where
+    C: Client,
     R: Redirector,
 {
     fn apply_state(&mut self, ctx: &Context<Self>, auth: OAuth2Context) {
@@ -97,7 +97,7 @@ where
             OAuth2Context::NotAuthenticated { reason } => match reason {
                 Reason::NewSession => {
                     // new session, then start the login
-                    super::start_login();
+                    super::start_login::<C>();
                 }
                 Reason::Expired | Reason::Logout => {
                     // expired or logged out explicitly, then redirect to logout page

@@ -1,14 +1,16 @@
 use crate::{
-    agent::{AgentConfiguration, OAuth2Bridge, OAuth2Operations, Out},
-    config::OAuth2Configuration,
+    agent::{AgentConfiguration, Client, OAuth2Bridge, OAuth2Operations, Out},
     context::OAuth2Context,
 };
 use std::time::Duration;
 use yew::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Properties)]
-pub struct Props {
-    pub config: OAuth2Configuration,
+#[derive(Clone, Debug, Properties)]
+pub struct Props<C: Client> {
+    pub config: C::Configuration,
+
+    #[prop_or_default]
+    pub scopes: Vec<String>,
 
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
@@ -17,19 +19,28 @@ pub struct Props {
     pub children: Children,
 }
 
-pub struct OAuth2 {
+impl<C: Client> PartialEq for Props<C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.config == other.config
+            && self.scopes == other.scopes
+            && self.grace_period == other.grace_period
+            && self.children == other.children
+    }
+}
+
+pub struct OAuth2<C: Client> {
     context: OAuth2Context,
-    agent: OAuth2Bridge,
-    config: AgentConfiguration,
+    agent: OAuth2Bridge<C>,
+    config: AgentConfiguration<C>,
 }
 
 pub enum Msg {
     Context(OAuth2Context),
 }
 
-impl Component for OAuth2 {
+impl<C: Client> Component for OAuth2<C> {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = Props<C>;
 
     fn create(ctx: &Context<Self>) -> Self {
         let mut agent = OAuth2Bridge::new(ctx.link().batch_callback(|out| match out {
@@ -81,11 +92,20 @@ impl Component for OAuth2 {
     }
 }
 
-impl OAuth2 {
-    fn make_config(props: &Props) -> AgentConfiguration {
+impl<C: Client> OAuth2<C> {
+    fn make_config(props: &Props<C>) -> AgentConfiguration<C> {
         AgentConfiguration {
             config: props.config.clone(),
+            scopes: props.scopes.clone(),
             grace_period: props.grace_period,
         }
     }
+}
+
+pub mod openid {
+    pub type OAuth2 = super::OAuth2<crate::agent::OpenIdClient>;
+}
+
+pub mod oauth2 {
+    pub type OAuth2 = super::OAuth2<crate::agent::OAuth2Client>;
 }
