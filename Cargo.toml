@@ -11,24 +11,26 @@ keywords = ["yew", "oauth2", "web", "html"]
 readme = "README.md"
 
 [dependencies]
-num-traits = "0.2"
 gloo-storage = "0.2"
 gloo-timers = "0.2"
 gloo-utils = "0.1"
 js-sys = "0.3"
 log = "0.4"
+num-traits = "0.2"
 oauth2 = "4"
+openidconnect = "2.2"
+reqwest = "0.11"
+serde = { version = "1", features = ["derive"] }
+wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 yew = "0.19"
 yew-agent = "0.1"
-wasm-bindgen = "0.2"
 
 web-sys = { version = "0.3", features = [
     "Window",
 ] }
 
 yew-router-nested = { version = "0.16.1", optional = true }
-serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
-rotuer = ["yew-router-nested"]
+router = ["yew-router-nested"]
