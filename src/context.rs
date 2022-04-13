@@ -132,22 +132,22 @@ where
     }
 }
 
-pub trait AsContextValue {
+pub trait UseContext {
     type Message;
 
-    fn as_value<T, F>(&self, f: F) -> ContextValue<T>
+    fn use_context<T, F>(&self, f: F) -> ContextValue<T>
     where
         T: 'static + Clone + PartialEq,
         F: Fn(T) -> Self::Message + 'static;
 }
 
-impl<C> AsContextValue for Scope<C>
+impl<C> UseContext for Scope<C>
 where
     C: Component,
 {
     type Message = C::Message;
 
-    fn as_value<T, F>(&self, f: F) -> ContextValue<T>
+    fn use_context<T, F>(&self, f: F) -> ContextValue<T>
     where
         T: 'static + Clone + PartialEq,
         F: Fn(T) -> Self::Message + 'static,
@@ -156,18 +156,18 @@ where
     }
 }
 
-impl<C> AsContextValue for Context<C>
+impl<C> UseContext for Context<C>
 where
     C: Component,
 {
     type Message = C::Message;
 
-    fn as_value<T, F>(&self, f: F) -> ContextValue<T>
+    fn use_context<T, F>(&self, f: F) -> ContextValue<T>
     where
         T: 'static + Clone + PartialEq,
         F: Fn(T) -> Self::Message + 'static,
     {
-        self.link().as_value(f)
+        self.link().use_context(f)
     }
 }
 
