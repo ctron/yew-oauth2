@@ -68,7 +68,10 @@ impl<C: Client> DerefMut for OAuth2Bridge<C> {
 pub trait OAuth2Operations<C: Client> {
     fn init(&mut self, config: AgentConfiguration<C>);
     fn configure(&mut self, config: AgentConfiguration<C>);
-    fn start_login(&mut self);
+    fn start_login(&mut self) {
+        self.start_login_opts(Default::default());
+    }
+    fn start_login_opts(&mut self, options: LoginOptions);
     fn request_state(&mut self);
     fn logout(&mut self);
 }
@@ -82,8 +85,8 @@ impl<C: Client> OAuth2Operations<C> for dyn Bridge<OAuth2Agent<C>> {
         self.send(In::Configure(config))
     }
 
-    fn start_login(&mut self) {
-        self.send(In::Login)
+    fn start_login_opts(&mut self, options: LoginOptions) {
+        self.send(In::Login(options))
     }
 
     fn request_state(&mut self) {

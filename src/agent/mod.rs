@@ -73,13 +73,18 @@ pub enum Msg<C: Client> {
     Refresh,
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LoginOptions {
+    pub query: HashMap<String, String>,
+}
+
 #[derive(Debug)]
 pub enum In<C: Client> {
     /// Initialize and configure the agent.
     Init(AgentConfiguration<C>),
     // Reconfigure the agent.
     Configure(AgentConfiguration<C>),
-    Login,
+    Login(LoginOptions),
     RequestState,
     Logout,
 }
@@ -190,9 +195,9 @@ impl<C: Client> Agent for OAuth2Agent<C> {
                     link.send_message(Msg::Configure(Box::new(Self::make_client(config).await)));
                 });
             }
-            Self::Input::Login => {
+            Self::Input::Login(options) => {
                 // start the login
-                if let Err(err) = self.start_login() {
+                if let Err(err) = self.start_login(options) {
                     log::debug!("Failed to start login: {err}");
                     if id.is_respondable() {
                         self.link.respond(id, Out::Error(err));
@@ -285,7 +290,7 @@ impl<C: Client> OAuth2Agent<C> {
         Url::parse(&href).map_err(|err| err.to_string())
     }
 
-    fn start_login(&self) -> Result<(), OAuth2Error> {
+    fn start_login(&self, options: LoginOptions) -> Result<(), OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
@@ -301,9 +306,13 @@ impl<C: Client> OAuth2Agent<C> {
         SessionStorage::set(STORAGE_KEY_REDIRECT_URL, redirect_url)
             .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
 
+        let mut login_url = login_context.url;
+
+        login_url.query_pairs_mut().extend_pairs(options.query);
+
         window()
             .location()
-            .set_href(login_context.url.as_str())
+            .set_href(login_url.as_str())
             .map_err(|err| {
                 OAuth2Error::StartLogin(
                     err.as_string()

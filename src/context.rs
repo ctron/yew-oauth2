@@ -35,24 +35,23 @@ pub enum OAuth2Context {
 }
 
 impl OAuth2Context {
-    /// Get the access token, if the context is [`OAuth2Context::Authenticated`]
-    pub fn access_token(&self) -> Option<&str> {
+    pub fn authentication(&self) -> Option<&Authentication> {
         match self {
-            Self::Authenticated(Authentication { access_token, .. }) => Some(access_token),
+            Self::Authenticated(auth) => Some(auth),
             _ => None,
         }
+    }
+
+    /// Get the access token, if the context is [`OAuth2Context::Authenticated`]
+    pub fn access_token(&self) -> Option<&str> {
+        self.authentication().map(|auth| auth.access_token.as_str())
     }
 
     /// Get the claims, if the context is [`OAuth2Context::Authenticated`]
     #[cfg(feature = "openid")]
     pub fn claims(&self) -> Option<&Claims> {
-        match self {
-            Self::Authenticated(Authentication {
-                claims: Some(claims),
-                ..
-            }) => Some(claims),
-            _ => None,
-        }
+        self.authentication()
+            .and_then(|auth| auth.claims.as_ref().map(|claims| claims.as_ref()))
     }
 }
 
