@@ -4,14 +4,14 @@ use yew_oauth2::prelude::*;
 use yew_router::prelude::*;
 
 #[cfg(not(feature = "openid"))]
-use yew_oauth2::prelude::oauth2::*;
+use yew_oauth2::oauth2::*;
 #[cfg(feature = "openid")]
-use yew_oauth2::prelude::openid::*;
+use yew_oauth2::openid::*;
 
 #[cfg(not(feature = "openid"))]
-use yew_oauth2::agent::OAuth2Client as Client;
+use yew_oauth2::oauth::Client;
 #[cfg(feature = "openid")]
-use yew_oauth2::agent::OpenIdClient as Client;
+use yew_oauth2::openid::Client;
 
 #[derive(Switch, Debug, Clone, PartialEq, Eq)]
 pub enum AppRoute {
@@ -19,6 +19,7 @@ pub enum AppRoute {
     Component,
     #[to = "/function"]
     Function,
+    #[cfg(feature = "openid")]
     #[to = "/identity"]
     Identity,
     #[to = "/"]

@@ -20,6 +20,7 @@ use openidconnect::{
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::rc::Rc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenIdLoginState {
@@ -37,7 +38,7 @@ impl Client for OpenIdClient {
     type TokenResponse = CoreTokenResponse;
     type Configuration = openid::Config;
     type LoginState = OpenIdLoginState;
-    type SessionState = IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>;
+    type SessionState = Rc<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>;
 
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
         let issuer = IssuerUrl::new(config.issuer_url)
@@ -115,10 +116,14 @@ impl Client for OpenIdClient {
             OAuth2Error::LoginResult(format!("Server did not return an ID token"))
         })?;
 
-        let claims = id_token
-            .clone()
-            .into_claims(&self.client.id_token_verifier(), &Nonce::new(state.nonce))
-            .map_err(|err| OAuth2Error::LoginResult(format!("failed to verify ID token: {err}")))?;
+        let claims = Rc::new(
+            id_token
+                .clone()
+                .into_claims(&self.client.id_token_verifier(), &Nonce::new(state.nonce))
+                .map_err(|err| {
+                    OAuth2Error::LoginResult(format!("failed to verify ID token: {err}"))
+                })?,
+        );
 
         Ok((
             OAuth2Context::Authenticated {
