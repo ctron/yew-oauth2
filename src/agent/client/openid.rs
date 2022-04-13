@@ -113,7 +113,7 @@ impl Client for OpenIdClient {
         log::debug!("Exchange code result: {:?}", result);
 
         let id_token = result.extra_fields().id_token().ok_or_else(|| {
-            OAuth2Error::LoginResult(format!("Server did not return an ID token"))
+            OAuth2Error::LoginResult("Server did not return an ID token".to_string())
         })?;
 
         let claims = Rc::new(
