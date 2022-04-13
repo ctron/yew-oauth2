@@ -1,27 +1,28 @@
 use super::{Redirect, Redirector};
-use gloo_utils::window;
 use std::marker::PhantomData;
 use yew::prelude::*;
 use yew_router_nested::agent::RouteRequest;
 use yew_router_nested::prelude::Route;
-use yew_router_nested::{agent::RouteAgentDispatcher, Switch};
+use yew_router_nested::{agent::RouteAgentDispatcher, RouteState, Switch};
 
-pub struct RouterRedirector<R>
+pub struct RouterRedirector<R, STATE = ()>
 where
     R: Switch + PartialEq + Clone + 'static,
+    STATE: 'static + RouteState,
 {
-    _marker: PhantomData<R>,
+    _marker: PhantomData<(R, STATE)>,
 }
 
-impl<R> Redirector for RouterRedirector<R>
+impl<R, STATE> Redirector for RouterRedirector<R, STATE>
 where
     R: Switch + PartialEq + Clone + 'static,
+    STATE: 'static + RouteState,
 {
     type Properties = RouterProps<R>;
 
     fn logout(props: &Self::Properties) {
-        let route = Route::from(props.logout.clone());
-        RouteAgentDispatcher::new().send(RouteRequest::ChangeRoute(route));
+        let route = Route::<STATE>::from(props.logout.clone());
+        RouteAgentDispatcher::<STATE>::new().send(RouteRequest::ChangeRoute(route));
     }
 }
 
@@ -35,12 +36,13 @@ where
 
 pub mod oauth2 {
     use super::*;
-    use crate::agent::OAuth2Client;
+    use crate::agent::client::OAuth2Client;
     pub type RouterRedirect<R> = Redirect<OAuth2Client, RouterRedirector<R>>;
 }
 
+#[cfg(feature = "openid")]
 pub mod openid {
     use super::*;
-    use crate::agent::OpenIdClient;
+    use crate::agent::client::OpenIdClient;
     pub type RouterRedirect<R> = Redirect<OpenIdClient, RouterRedirector<R>>;
 }

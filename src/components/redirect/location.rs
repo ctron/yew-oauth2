@@ -19,12 +19,13 @@ pub struct LocationProps {
 
 pub mod oauth2 {
     use super::*;
-    use crate::agent::OAuth2Client;
-    pub type LocationRedirect = Redirect<OAuth2Client, LocationRedirector>;
+    use crate::agent::client::OAuth2Client as Client;
+    pub type LocationRedirect = Redirect<Client, LocationRedirector>;
 }
 
+#[cfg(feature = "openid")]
 pub mod openid {
     use super::*;
-    use crate::agent::OpenIdClient;
-    pub type LocationRedirect = Redirect<OpenIdClient, LocationRedirector>;
+    use crate::agent::client::OpenIdClient as Client;
+    pub type LocationRedirect = Redirect<Client, LocationRedirector>;
 }

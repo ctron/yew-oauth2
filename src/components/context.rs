@@ -102,10 +102,11 @@ impl<C: Client> OAuth2<C> {
     }
 }
 
+#[cfg(feature = "openid")]
 pub mod openid {
-    pub type OAuth2 = super::OAuth2<crate::agent::OpenIdClient>;
+    pub type OAuth2 = super::OAuth2<crate::agent::client::OpenIdClient>;
 }
 
 pub mod oauth2 {
-    pub type OAuth2 = super::OAuth2<crate::agent::OAuth2Client>;
+    pub type OAuth2 = super::OAuth2<crate::agent::client::OAuth2Client>;
 }

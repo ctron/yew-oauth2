@@ -19,7 +19,6 @@ js-sys = "0.3"
 log = "0.4"
 num-traits = "0.2"
 oauth2 = "4"
-openidconnect = "2.2"
 reqwest = "0.11"
 serde = { version = "1", features = ["derive"] }
 wasm-bindgen = "0.2"
@@ -32,6 +31,8 @@ web-sys = { version = "0.3", features = [
 ] }
 
 yew-router-nested = { version = "0.16.1", optional = true }
+openidconnect = { version = "2.2", optional = true }
 
 [features]
 router = ["yew-router-nested"]
+openid = ["openidconnect"]

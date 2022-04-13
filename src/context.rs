@@ -1,6 +1,10 @@
-use openidconnect::core::CoreGenderClaim;
-use openidconnect::{EmptyAdditionalClaims, IdTokenClaims};
 use yew::{context::ContextHandle, html::Scope, prelude::*};
+
+#[cfg(feature = "openid")]
+pub type Claims = openidconnect::IdTokenClaims<
+    openidconnect::EmptyAdditionalClaims,
+    openidconnect::core::CoreGenderClaim,
+>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum OAuth2Context {
@@ -13,7 +17,9 @@ pub enum OAuth2Context {
         access_token: String,
         /// An optional refresh token
         refresh_token: Option<String>,
-        claims: Option<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>,
+        /// OpenID claims
+        #[cfg(feature = "openid")]
+        claims: Option<Claims>,
         expires: Option<u64>,
     },
     Failed(String),
