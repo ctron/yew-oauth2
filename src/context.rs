@@ -6,7 +6,7 @@ pub type Claims = openidconnect::IdTokenClaims<
     openidconnect::core::CoreGenderClaim,
 >;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Authentication {
     /// The access token
     pub access_token: String,
@@ -214,5 +214,9 @@ where
             Self::Some(value, _) => Some(value),
             Self::None => None,
         }
+    }
+
+    pub fn as_ref(&self) -> Option<&T> {
+        self.get()
     }
 }
