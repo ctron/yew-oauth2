@@ -5,6 +5,7 @@ pub use crate::components::*;
 pub use crate::config::*;
 pub use crate::context::*;
 
+#[cfg(feature = "openid")]
 pub mod openid {
     pub use crate::components::context::openid::*;
     pub use crate::components::redirect::location::openid::*;
