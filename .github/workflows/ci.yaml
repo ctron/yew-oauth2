@@ -29,9 +29,6 @@ jobs:
           override: true
           components: rustfmt, clippy
 
-      - run: |
-          cargo generate-lockfile
-
       - uses: actions/cache@v3
         with:
           path: |
@@ -40,7 +37,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -48,10 +45,16 @@ jobs:
           command: fmt
           args: --all -- --check
 
+      - name: Install cargo check-all
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-all-features
+
       - name: Run cargo check
         uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: check-all-features
           args: --target wasm32-unknown-unknown
 
       - name: Run cargo clippy
@@ -59,4 +62,3 @@ jobs:
         with:
           command: clippy
           args: --target wasm32-unknown-unknown -- -D warnings
-
