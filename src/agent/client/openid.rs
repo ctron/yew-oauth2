@@ -1,3 +1,4 @@
+use crate::context::Authentication;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
@@ -126,12 +127,12 @@ impl Client for OpenIdClient {
         );
 
         Ok((
-            OAuth2Context::Authenticated {
+            OAuth2Context::Authenticated(Authentication {
                 access_token: result.access_token().secret().to_string(),
                 refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
                 expires: expires(result.expires_in()),
                 claims: Some(claims.clone()),
-            },
+            }),
             claims,
         ))
     }
@@ -151,12 +152,12 @@ impl Client for OpenIdClient {
             })?;
 
         Ok((
-            OAuth2Context::Authenticated {
+            OAuth2Context::Authenticated(Authentication {
                 access_token: result.access_token().secret().to_string(),
                 refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
                 expires: expires(result.expires_in()),
                 claims: Some(session_state.clone()),
-            },
+            }),
             session_state,
         ))
     }

@@ -8,7 +8,7 @@ pub fn view_identity() -> Html {
     html!(
         <>
             <h2> { "Claims"} </h2>
-            if let Some(OAuth2Context::Authenticated { claims: Some(claims) , ..}) = auth {
+            if let Some(OAuth2Context::Authenticated (Authentication {claims: Some(claims) , ..})) = auth {
                 <code><pre>
                     { serde_json::to_string_pretty(claims.as_ref()).unwrap_or_default() }
                 </pre></code>

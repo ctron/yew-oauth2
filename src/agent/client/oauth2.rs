@@ -1,3 +1,4 @@
+use crate::context::Authentication;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
@@ -29,13 +30,13 @@ pub struct OAuth2Client {
 
 impl OAuth2Client {
     fn make_authenticated(result: BasicTokenResponse) -> OAuth2Context {
-        OAuth2Context::Authenticated {
+        OAuth2Context::Authenticated(Authentication {
             access_token: result.access_token().secret().to_string(),
             refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
             expires: expires(result.expires_in()),
             #[cfg(feature = "openid")]
             claims: None,
-        }
+        })
     }
 }
 

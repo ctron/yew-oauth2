@@ -4,7 +4,7 @@ mod support;
 pub use client::Client;
 pub use support::*;
 
-use crate::context::{OAuth2Context, Reason};
+use crate::context::{Authentication, OAuth2Context, Reason};
 use gloo_storage::{SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
@@ -229,10 +229,10 @@ impl<C: Client> OAuth2Agent<C> {
     fn update_state(&mut self, state: OAuth2Context, session_state: Option<C::SessionState>) {
         log::debug!("update state: {state:?}");
 
-        if let OAuth2Context::Authenticated {
+        if let OAuth2Context::Authenticated(Authentication {
             expires: Some(expires),
             ..
-        } = &state
+        }) = &state
         {
             let grace = self
                 .config
@@ -435,10 +435,10 @@ impl<C: Client> OAuth2Agent<C> {
                 return;
             };
 
-        if let OAuth2Context::Authenticated {
+        if let OAuth2Context::Authenticated(Authentication {
             refresh_token: Some(refresh_token),
             ..
-        } = &self.state
+        }) = &self.state
         {
             log::debug!("Triggering refresh");
 

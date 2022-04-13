@@ -1,4 +1,4 @@
-use super::ViewAuthInfo;
+use super::ViewAuthContext;
 use yew::prelude::*;
 use yew_oauth2::prelude::*;
 
@@ -9,7 +9,7 @@ pub fn view_info() -> Html {
     html!(
         if let Some(auth) = auth {
             <h2> { "Function component example"} </h2>
-            <ViewAuthInfo {auth} />
+            <ViewAuthContext {auth} />
         } else {
             { "OAuth2 context not found." }
         }

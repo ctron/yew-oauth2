@@ -7,6 +7,19 @@ pub type Claims = openidconnect::IdTokenClaims<
 >;
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Authentication {
+    /// The access token
+    pub access_token: String,
+    /// An optional refresh token
+    pub refresh_token: Option<String>,
+    /// OpenID claims
+    #[cfg(feature = "openid")]
+    pub claims: Option<std::rc::Rc<Claims>>,
+    /// Expiration timestamp in seconds
+    pub expires: Option<u64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum OAuth2Context {
     /// The agent is not initialized yet.
     NotInitialized,
@@ -16,16 +29,7 @@ pub enum OAuth2Context {
         reason: Reason,
     },
     /// Session is authenticated.
-    Authenticated {
-        /// The access token
-        access_token: String,
-        /// An optional refresh token
-        refresh_token: Option<String>,
-        /// OpenID claims
-        #[cfg(feature = "openid")]
-        claims: Option<std::rc::Rc<Claims>>,
-        expires: Option<u64>,
-    },
+    Authenticated(Authentication),
     /// Something failed.
     Failed(String),
 }
@@ -34,7 +38,7 @@ impl OAuth2Context {
     /// Get the access token, if the context is [`OAuth2Context::Authenticated`]
     pub fn access_token(&self) -> Option<&str> {
         match self {
-            Self::Authenticated { access_token, .. } => Some(&access_token),
+            Self::Authenticated(Authentication { access_token, .. }) => Some(access_token),
             _ => None,
         }
     }
@@ -43,10 +47,10 @@ impl OAuth2Context {
     #[cfg(feature = "openid")]
     pub fn claims(&self) -> Option<&Claims> {
         match self {
-            Self::Authenticated {
+            Self::Authenticated(Authentication {
                 claims: Some(claims),
                 ..
-            } => Some(claims),
+            }) => Some(claims),
             _ => None,
         }
     }

@@ -1,4 +1,4 @@
-use super::ViewAuthInfo;
+use crate::components::ViewAuthContext;
 use yew::context::ContextHandle;
 use yew::prelude::*;
 use yew_oauth2::prelude::*;
@@ -42,7 +42,7 @@ impl Component for ViewAuthInfoComponent {
         html!(
             if let Some(auth) = self.auth.clone() {
                 <h2> { "Component example"} </h2>
-                <ViewAuthInfo {auth} />
+                <ViewAuthContext {auth} />
             } else {
                 { "OAuth2 context not found." }
             }

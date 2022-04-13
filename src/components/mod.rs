@@ -1,14 +1,16 @@
-pub mod auth;
+pub mod authenticated;
 pub mod context;
 pub mod failure;
 pub mod noauth;
 pub mod redirect;
+pub mod use_authentication;
 
 // only put use common components
 
-pub use auth::*;
+pub use authenticated::*;
 pub use failure::*;
 pub use noauth::*;
+pub use use_authentication::*;
 
 use crate::agent::{Client, OAuth2Dispatcher, OAuth2Operations};
 use yew::prelude::*;

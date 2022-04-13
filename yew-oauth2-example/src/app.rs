@@ -19,6 +19,8 @@ pub enum AppRoute {
     Component,
     #[to = "/function"]
     Function,
+    #[to = "/use"]
+    UseAuthentication,
     #[cfg(feature = "openid")]
     #[to = "/identity"]
     Identity,
@@ -82,6 +84,7 @@ impl Component for Application {
                         <li><RouterAnchor<AppRoute> route={AppRoute::Index}> { "Index" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Component}> { "Component" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Function}> { "Function" } </RouterAnchor<AppRoute>></li>
+                        <li><RouterAnchor<AppRoute> route={AppRoute::UseAuthentication}> { "Use" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Identity}> { "Identity" } </RouterAnchor<AppRoute>></li>
                     </ul>
                     <Expiration/>
@@ -91,6 +94,11 @@ impl Component for Application {
                                 AppRoute::Index => html!(<p> { "You are logged in"} </p>),
                                 AppRoute::Component => html!(<ViewAuthInfoComponent />),
                                 AppRoute::Function => html!(<ViewAuthInfoFunctional />),
+                                AppRoute::UseAuthentication => html!(
+                                    <UseAuthentication<ViewUseAuth>>
+                                        <ViewUseAuth/>
+                                    </UseAuthentication<ViewUseAuth>>
+                                ),
                                 AppRoute::Identity => html!(<ViewIdentity />),
                             }
                         })}

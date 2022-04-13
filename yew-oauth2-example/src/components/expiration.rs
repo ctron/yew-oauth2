@@ -48,10 +48,10 @@ impl Component for Expiration {
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
-        if let Some(OAuth2Context::Authenticated {
+        if let Some(OAuth2Context::Authenticated(Authentication {
             expires: Some(expires),
             ..
-        }) = self.auth
+        })) = self.auth
         {
             let expires = Utc.timestamp(expires as i64, 0);
 
