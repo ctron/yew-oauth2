@@ -10,6 +10,7 @@ pub mod openid {
         pub client_id: String,
         /// The OpenID connect issuer URL.
         pub issuer_url: String,
+        #[serde(default)]
         /// Additional, non-required configuration, with a default.
         pub additional: Additional,
     }
