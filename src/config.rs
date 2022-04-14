@@ -10,6 +10,12 @@ pub mod openid {
         pub client_id: String,
         /// The OpenID connect issuer URL.
         pub issuer_url: String,
+        /// Additional, non-required configuration, with a default.
+        pub additional: Additional,
+    }
+
+    #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct Additional {
         /// An override for the end session URL.
         pub end_session_url: Option<String>,
     }

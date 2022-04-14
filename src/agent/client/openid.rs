@@ -18,9 +18,8 @@ use openidconnect::{
         CoreTokenResponse,
     },
     reqwest::async_http_client,
-    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EmptyAdditionalProviderMetadata,
-    IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata,
-    RedirectUrl, RefreshToken, Scope,
+    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, IdTokenClaims, IssuerUrl, Nonce,
+    PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
 };
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -82,6 +81,7 @@ impl Client for OpenIdClient {
             })?;
 
         let end_session_url = config
+            .additional
             .end_session_url
             .map(|url| Url::parse(&url))
             .transpose()

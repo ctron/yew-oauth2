@@ -61,6 +61,7 @@ impl Component for Application {
             client_id: "frontend".into(),
             issuer_url:
                 "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew".into(),
+            additional: Default::default(),
         };
 
         html!(
