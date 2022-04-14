@@ -30,8 +30,8 @@ web-sys = { version = "0.3", features = [
     "Window",
 ] }
 
-yew-router-nested = { version = "0.16.1", optional = true }
 openidconnect = { version = "2.2", optional = true }
+yew-router-nested = { version = "0.16.1", optional = true }
 
 [features]
 router = ["yew-router-nested"]

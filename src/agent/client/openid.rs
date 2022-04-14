@@ -1,27 +1,30 @@
-use crate::context::Authentication;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
         InnerConfig, OAuth2Error,
     },
     config::openid,
-    context::OAuth2Context,
+    context::{Authentication, OAuth2Context},
 };
 use async_trait::async_trait;
+use gloo_utils::window;
 use oauth2::TokenResponse;
 use openidconnect::{
     core::{
-        CoreAuthenticationFlow, CoreClient, CoreGenderClaim, CoreProviderMetadata,
+        CoreAuthDisplay, CoreAuthenticationFlow, CoreClaimName, CoreClaimType, CoreClient,
+        CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey, CoreJsonWebKeyType,
+        CoreJsonWebKeyUse, CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm,
+        CoreJwsSigningAlgorithm, CoreResponseMode, CoreResponseType, CoreSubjectIdentifierType,
         CoreTokenResponse,
     },
     reqwest::async_http_client,
-    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, IdTokenClaims, IssuerUrl, Nonce,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope,
+    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EmptyAdditionalProviderMetadata,
+    IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata,
+    RedirectUrl, RefreshToken, Scope,
 };
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
-use std::rc::Rc;
+use std::{fmt::Debug, rc::Rc};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenIdLoginState {
@@ -32,7 +35,34 @@ pub struct OpenIdLoginState {
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
     client: openidconnect::core::CoreClient,
+    end_session_url: Option<Url>,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AdditionalProviderMetadata {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_session_endpoint: Option<Url>,
+}
+
+impl openidconnect::AdditionalProviderMetadata for AdditionalProviderMetadata {}
+
+pub type ExtendedProviderMetadata = ProviderMetadata<
+    AdditionalProviderMetadata,
+    CoreAuthDisplay,
+    CoreClientAuthMethod,
+    CoreClaimName,
+    CoreClaimType,
+    CoreGrantType,
+    CoreJweContentEncryptionAlgorithm,
+    CoreJweKeyManagementAlgorithm,
+    CoreJwsSigningAlgorithm,
+    CoreJsonWebKeyType,
+    CoreJsonWebKeyUse,
+    CoreJsonWebKey,
+    CoreResponseMode,
+    CoreResponseType,
+    CoreSubjectIdentifierType,
+>;
 
 #[async_trait(? Send)]
 impl Client for OpenIdClient {
@@ -45,16 +75,28 @@ impl Client for OpenIdClient {
         let issuer = IssuerUrl::new(config.issuer_url)
             .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
 
-        let metadata = CoreProviderMetadata::discover_async(issuer, async_http_client)
+        let metadata = ExtendedProviderMetadata::discover_async(issuer, async_http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
             })?;
 
+        let end_session_url = config
+            .end_session_url
+            .map(|url| Url::parse(&url))
+            .transpose()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Unable to parse end_session_url: {err}"))
+            })?
+            .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
+
         let client =
             CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            end_session_url,
+        })
     }
 
     fn set_redirect_uri(mut self, url: Url) -> Self {
@@ -160,5 +202,15 @@ impl Client for OpenIdClient {
             }),
             session_state,
         ))
+    }
+
+    fn logout(&self) {
+        if let Some(url) = &self.end_session_url {
+            let mut url = url.clone();
+            if let Ok(current) = window().location().href() {
+                url.query_pairs_mut().append_pair("redirect_uri", &current);
+            }
+            window().location().set_href(url.as_str()).ok();
+        }
     }
 }

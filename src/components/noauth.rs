@@ -7,6 +7,7 @@ pub struct Props {
     pub children: Children,
 }
 
+/// Yew component, rendering children when the agent is not authenticated.
 #[function_component(NotAuthenticated)]
 pub fn not_authenticated(props: &Props) -> Html {
     let auth = use_context::<OAuth2Context>();

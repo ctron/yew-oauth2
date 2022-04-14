@@ -82,10 +82,13 @@ pub struct LoginOptions {
 pub enum In<C: Client> {
     /// Initialize and configure the agent.
     Init(AgentConfiguration<C>),
-    // Reconfigure the agent.
+    /// Reconfigure the agent.
     Configure(AgentConfiguration<C>),
+    /// Start the login process
     Login(LoginOptions),
+    /// Request the current state directly
     RequestState,
+    /// Start the login, might redirect to the logout URL
     Logout,
 }
 
@@ -101,6 +104,9 @@ pub struct InnerConfig {
     grace_period: Duration,
 }
 
+/// The OAuth2 state agent.
+///
+/// It is being set up by the [`OAuth2`] component.
 pub struct OAuth2Agent<C: Client> {
     link: AgentLink<Self>,
     client: Option<C>,
@@ -215,6 +221,9 @@ impl<C: Client> Agent for OAuth2Agent<C> {
                     },
                     None,
                 );
+                if let Some(client) = &self.client {
+                    client.logout();
+                }
             }
         }
     }

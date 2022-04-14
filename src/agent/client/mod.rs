@@ -56,6 +56,8 @@ pub trait Client: 'static + Sized + Clone + Debug {
         refresh_token: String,
         session_state: Self::SessionState,
     ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error>;
+
+    fn logout(&self) {}
 }
 
 /// Convert a duration to a timestamp, in seconds.

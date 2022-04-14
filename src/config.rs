@@ -3,16 +3,22 @@ use serde::{Deserialize, Serialize};
 pub mod openid {
     use super::*;
 
+    /// OpenID Connect client configuration
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Config {
+        /// The client ID
         pub client_id: String,
+        /// The OpenID connect issuer URL.
         pub issuer_url: String,
+        /// An override for the end session URL.
+        pub end_session_url: Option<String>,
     }
 }
 
 pub mod oauth2 {
     use super::*;
 
+    /// Plain OAuth2 client configuration
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Config {
         pub client_id: String,
