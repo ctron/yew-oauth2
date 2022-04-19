@@ -35,6 +35,7 @@ pub struct OpenIdLoginState {
 pub struct OpenIdClient {
     client: openidconnect::core::CoreClient,
     end_session_url: Option<Url>,
+    after_logout_url: Option<Url>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -90,12 +91,22 @@ impl Client for OpenIdClient {
             })?
             .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
 
+        let after_logout_url = config
+            .additional
+            .after_logout_url
+            .map(|url| Url::parse(&url))
+            .transpose()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Unable to parse after_logout_url: {err}"))
+            })?;
+
         let client =
             CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
 
         Ok(Self {
             client,
             end_session_url,
+            after_logout_url,
         })
     }
 
@@ -207,9 +218,14 @@ impl Client for OpenIdClient {
     fn logout(&self) {
         if let Some(url) = &self.end_session_url {
             let mut url = url.clone();
-            if let Ok(current) = window().location().href() {
+
+            if let Some(after) = &self.after_logout_url {
+                url.query_pairs_mut()
+                    .append_pair("redirect_uri", after.as_str());
+            } else if let Ok(current) = window().location().href() {
                 url.query_pairs_mut().append_pair("redirect_uri", &current);
             }
+
             window().location().set_href(url.as_str()).ok();
         }
     }

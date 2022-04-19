@@ -19,6 +19,8 @@ pub mod openid {
     pub struct Additional {
         /// An override for the end session URL.
         pub end_session_url: Option<String>,
+        /// The URL to navigate to after the logout has been completed.
+        pub after_logout_url: Option<String>,
     }
 }
 
