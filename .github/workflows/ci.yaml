@@ -49,7 +49,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-all-features
+          args: cargo-all-features --force
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
