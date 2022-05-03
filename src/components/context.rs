@@ -29,6 +29,8 @@ impl<C: Client> PartialEq for Props<C> {
 }
 
 /// Yew component providing the OAuth2 context and configuring the agent.
+///
+/// All items making using of the OAuth2 or OpenID Connect context must be below this element.
 pub struct OAuth2<C: Client> {
     context: OAuth2Context,
     agent: OAuth2Bridge<C>,
