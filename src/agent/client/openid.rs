@@ -31,13 +31,17 @@ pub struct OpenIdLoginState {
     pub nonce: String,
 }
 
+const POST_LOGOUT_DIRECT: &str = "post_logout_redirect_uri";
+
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
-    client: openidconnect::core::CoreClient,
+    client: CoreClient,
     end_session_url: Option<Url>,
     after_logout_url: Option<Url>,
+    post_logout_redirect_name: Option<String>,
 }
 
+/// Additional metadata read from the discovery endpoint
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdditionalProviderMetadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -107,6 +111,7 @@ impl Client for OpenIdClient {
             client,
             end_session_url,
             after_logout_url,
+            post_logout_redirect_name: config.additional.post_logout_redirect_name,
         })
     }
 
@@ -219,11 +224,15 @@ impl Client for OpenIdClient {
         if let Some(url) = &self.end_session_url {
             let mut url = url.clone();
 
+            let name = self
+                .post_logout_redirect_name
+                .as_deref()
+                .unwrap_or(POST_LOGOUT_DIRECT);
+
             if let Some(after) = &self.after_logout_url {
-                url.query_pairs_mut()
-                    .append_pair("redirect_uri", after.as_str());
+                url.query_pairs_mut().append_pair(name, after.as_str());
             } else if let Ok(current) = window().location().href() {
-                url.query_pairs_mut().append_pair("redirect_uri", &current);
+                url.query_pairs_mut().append_pair(name, &current);
             }
 
             window().location().set_href(url.as_str()).ok();
