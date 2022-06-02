@@ -73,7 +73,10 @@ impl Client for OpenIdClient {
     type TokenResponse = CoreTokenResponse;
     type Configuration = openid::Config;
     type LoginState = OpenIdLoginState;
-    type SessionState = Rc<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>;
+    type SessionState = (
+        String,
+        Rc<IdTokenClaims<EmptyAdditionalClaims, CoreGenderClaim>>,
+    );
 
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
         let issuer = IssuerUrl::new(config.issuer_url)
@@ -191,7 +194,7 @@ impl Client for OpenIdClient {
                 expires: expires(result.expires_in()),
                 claims: Some(claims.clone()),
             }),
-            claims,
+            (id_token.to_string(), claims),
         ))
     }
 
@@ -214,13 +217,13 @@ impl Client for OpenIdClient {
                 access_token: result.access_token().secret().to_string(),
                 refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
                 expires: expires(result.expires_in()),
-                claims: Some(session_state.clone()),
+                claims: Some(session_state.1.clone()),
             }),
             session_state,
         ))
     }
 
-    fn logout(&self) {
+    fn logout(&self, session_state: Self::SessionState) {
         if let Some(url) = &self.end_session_url {
             let mut url = url.clone();
 
@@ -228,6 +231,9 @@ impl Client for OpenIdClient {
                 .post_logout_redirect_name
                 .as_deref()
                 .unwrap_or(POST_LOGOUT_DIRECT);
+
+            url.query_pairs_mut()
+                .append_pair("id_token_hint", &session_state.0);
 
             if let Some(after) = &self.after_logout_url {
                 url.query_pairs_mut().append_pair(name, after.as_str());

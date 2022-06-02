@@ -222,7 +222,9 @@ impl<C: Client> Agent for OAuth2Agent<C> {
                     None,
                 );
                 if let Some(client) = &self.client {
-                    client.logout();
+                    if let Some(session_state) = self.session_state.clone() {
+                        client.logout(session_state);
+                    }
                 }
             }
         }
