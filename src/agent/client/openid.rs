@@ -241,6 +241,8 @@ impl Client for OpenIdClient {
                 url.query_pairs_mut().append_pair(name, &current);
             }
 
+            log::info!("Navigating to: {url}");
+
             window().location().set_href(url.as_str()).ok();
         }
     }
