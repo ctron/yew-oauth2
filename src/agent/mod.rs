@@ -215,17 +215,20 @@ impl<C: Client> Agent for OAuth2Agent<C> {
                     .respond(id, Out::ContextUpdate(self.state.clone()));
             }
             Self::Input::Logout => {
+                if let Some(client) = &self.client {
+                    if let Some(session_state) = self.session_state.clone() {
+                        client.logout(session_state);
+                    }
+                }
+                // There is a bug in yew, which panics during re-rendering, which might be triggered
+                // by the next step. So we logout first, which re-directs. And so running into that
+                // issue doesn't harm as, as we left the page anyway.
                 self.update_state(
                     OAuth2Context::NotAuthenticated {
                         reason: Reason::Logout,
                     },
                     None,
                 );
-                if let Some(client) = &self.client {
-                    if let Some(session_state) = self.session_state.clone() {
-                        client.logout(session_state);
-                    }
-                }
             }
         }
     }
