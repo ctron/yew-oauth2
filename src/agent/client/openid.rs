@@ -244,6 +244,8 @@ impl Client for OpenIdClient {
             log::info!("Navigating to: {url}");
 
             window().location().set_href(url.as_str()).ok();
+        } else {
+            log::warn!("Found not session end URL");
         }
     }
 }
