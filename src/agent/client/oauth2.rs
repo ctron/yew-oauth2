@@ -7,6 +7,7 @@ use crate::{
     config::oauth2,
     context::OAuth2Context,
 };
+use ::oauth2::ClientSecret;
 use ::oauth2::{
     basic::{BasicClient, BasicTokenResponse},
     reqwest::async_http_client,
@@ -50,7 +51,7 @@ impl Client for OAuth2Client {
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
         let client = BasicClient::new(
             ClientId::new(config.client_id),
-            None,
+            config.client_secret.map(|secret| ClientSecret::new(secret)),
             AuthUrl::new(config.auth_url)
                 .map_err(|err| OAuth2Error::Configuration(format!("invalid auth URL: {err}")))?,
             Some(

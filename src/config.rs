@@ -13,6 +13,7 @@ pub mod openid {
         #[serde(default)]
         /// Additional, non-required configuration, with a default.
         pub additional: Additional,
+
     }
 
     #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,14 +39,16 @@ pub mod oauth2 {
         pub client_id: String,
         pub auth_url: String,
         pub token_url: String,
+        pub client_secret: Option<String>
     }
 
     impl Config {
-        pub fn new<C, A, T, S, I>(client_id: C, auth_url: A, token_url: T) -> Self
+        pub fn new<C, A, T,O, S, I>(client_id: C, auth_url: A, token_url: T, client_secret: O) -> Self
         where
             C: Into<String>,
             A: Into<String>,
             T: Into<String>,
+            O: Into<Option<String>>,
             S: IntoIterator<Item = I>,
             I: Into<String>,
         {
@@ -53,6 +56,7 @@ pub mod oauth2 {
                 client_id: client_id.into(),
                 auth_url: auth_url.into(),
                 token_url: token_url.into(),
+                client_secret: client_secret.into()
             }
         }
     }
