@@ -9,7 +9,7 @@ use yew_oauth2::oauth2::*;
 use yew_oauth2::openid::*;
 
 #[cfg(not(feature = "openid"))]
-use yew_oauth2::oauth::Client;
+use yew_oauth2::oauth2::Client;
 #[cfg(feature = "openid")]
 use yew_oauth2::openid::Client;
 
@@ -52,21 +52,33 @@ impl Component for Application {
         #[cfg(not(feature = "openid"))]
         let config = Config {
             client_id: "frontend".into(),
-            auth_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/auth".into(),
-            token_url: "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew/protocol/openid-connect/token".into(),
+            auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
+            token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
         };
 
         #[cfg(feature = "openid")]
         let config = Config {
             client_id: "frontend".into(),
-            issuer_url:
-                "https://sso-ctron-drogue.apps.wonderful.iot-playground.org/auth/realms/Yew".into(),
+            issuer_url: "http://localhost:8081/realms/master".into(),
             additional: Default::default(),
         };
 
+        let mode = if cfg!(feature = "openid") {
+            "OpenID Connect"
+        } else {
+            "pure OAuth2"
+        };
+
+        #[cfg(feature = "openid")]
+        let openid_routes = html! (
+            <li><RouterAnchor<AppRoute> route={AppRoute::Identity}> { "Identity" } </RouterAnchor<AppRoute>></li>
+        );
+        #[cfg(not(feature = "openid"))]
+        let openid_routes = html!();
+
         html!(
             <>
-            <h1> { "OAuth2 login example" } </h1>
+            <h1> { "Login example (" } {mode} { ")"} </h1>
 
             <OAuth2
                 {config}
@@ -86,7 +98,7 @@ impl Component for Application {
                         <li><RouterAnchor<AppRoute> route={AppRoute::Component}> { "Component" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::Function}> { "Function" } </RouterAnchor<AppRoute>></li>
                         <li><RouterAnchor<AppRoute> route={AppRoute::UseAuthentication}> { "Use" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Identity}> { "Identity" } </RouterAnchor<AppRoute>></li>
+                        { openid_routes }
                     </ul>
                     <Expiration/>
                     <Router<AppRoute>
@@ -100,6 +112,7 @@ impl Component for Application {
                                         <ViewUseAuth/>
                                     </UseAuthentication<ViewUseAuth>>
                                 ),
+                                #[cfg(feature = "openid")]
                                 AppRoute::Identity => html!(<ViewIdentity />),
                             }
                         })}
