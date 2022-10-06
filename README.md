@@ -97,3 +97,25 @@ impl Component for MyApplication {
     }
 }
 ```
+
+### Testing
+
+Testing the example projects locally can be done using a local Keycloak instance and `trunk`.
+
+Start the Keycloak instance using:
+
+```shell
+podman-compose -f develop/docker-compose.yaml up
+```
+
+Then start `trunk` with the local developer instance:
+
+```shell
+cd yew-oauth2-example # or yew-oauth2-redirect-example
+trunk serve
+```
+
+And navigate your browser to [http://localhost:8080](http://localhost:8080).
+
+**NOTE:** It is important to use `http://localhost:8080` instead of e.g. `http://127.0.0.1:8080`, as Keycloak is configured by default to use `http://localhost:*` as a valid redirect URL when in dev-mode. Otherwise, you will get
+an "invalid redirect" error from Keycloak.
