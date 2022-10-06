@@ -58,8 +58,11 @@ impl OAuth2Context {
 /// The reason why the context is un-authenticated.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reason {
+    /// Because the user didn't log in so far.
     NewSession,
+    /// Because there was a session, but now it expired.
     Expired,
+    /// Because the user chose to log out.
     Logout,
 }
 
