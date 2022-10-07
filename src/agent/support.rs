@@ -73,7 +73,10 @@ pub trait OAuth2Operations<C: Client> {
     }
     fn start_login_opts(&mut self, options: LoginOptions);
     fn request_state(&mut self);
-    fn logout(&mut self);
+    fn logout(&mut self) {
+        self.logout_opts(Default::default());
+    }
+    fn logout_opts(&mut self, options: LogoutOptions);
 }
 
 impl<C: Client> OAuth2Operations<C> for dyn Bridge<OAuth2Agent<C>> {
@@ -93,7 +96,7 @@ impl<C: Client> OAuth2Operations<C> for dyn Bridge<OAuth2Agent<C>> {
         self.send(In::RequestState)
     }
 
-    fn logout(&mut self) {
-        self.send(In::Logout)
+    fn logout_opts(&mut self, options: LogoutOptions) {
+        self.send(In::Logout(options))
     }
 }

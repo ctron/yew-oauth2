@@ -1,9 +1,11 @@
-use super::{Redirect, Redirector};
+use super::{Redirect, Redirector, RedirectorProperties};
 use std::marker::PhantomData;
 use yew::prelude::*;
-use yew_router_nested::agent::RouteRequest;
-use yew_router_nested::prelude::Route;
-use yew_router_nested::{agent::RouteAgentDispatcher, RouteState, Switch};
+use yew_router_nested::{
+    agent::{RouteAgentDispatcher, RouteRequest},
+    prelude::Route,
+    RouteState, Switch,
+};
 
 pub struct RouterRedirector<R, STATE = ()>
 where
@@ -22,6 +24,7 @@ where
 
     fn logout(props: &Self::Properties) {
         let route = Route::<STATE>::from(props.logout.clone());
+        log::debug!("ChangeRoute due to logout: {:?}", route);
         RouteAgentDispatcher::<STATE>::new().send(RouteRequest::ChangeRoute(route));
     }
 }
@@ -31,7 +34,18 @@ pub struct RouterProps<R>
 where
     R: Switch + PartialEq + Clone + 'static,
 {
+    #[prop_or_default]
+    pub children: Option<Children>,
     pub logout: R,
+}
+
+impl<R> RedirectorProperties for RouterProps<R>
+where
+    R: Switch + PartialEq + Clone + 'static,
+{
+    fn children(&self) -> Option<&Children> {
+        self.children.as_ref()
+    }
 }
 
 pub mod oauth2 {

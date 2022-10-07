@@ -73,9 +73,17 @@ pub enum Msg<C: Client> {
     Refresh,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LoginOptions {
     pub query: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LogoutOptions {
+    /// An optional target to navigate to after the user was logged out.
+    ///
+    /// This would override any settings from the client configuration.
+    pub target: Option<Url>,
 }
 
 #[derive(Debug)]
@@ -89,7 +97,7 @@ pub enum In<C: Client> {
     /// Request the current state directly
     RequestState,
     /// Start the login, might redirect to the logout URL
-    Logout,
+    Logout(LogoutOptions),
 }
 
 #[derive(Debug)]
@@ -214,15 +222,18 @@ impl<C: Client> Agent for OAuth2Agent<C> {
                 self.link
                     .respond(id, Out::ContextUpdate(self.state.clone()));
             }
-            Self::Input::Logout => {
+            Self::Input::Logout(options) => {
                 if let Some(client) = &self.client {
                     if let Some(session_state) = self.session_state.clone() {
-                        client.logout(session_state);
+                        // let the client know that log out, clients may navigate to a different
+                        // page
+                        log::debug!("Notify client of logout");
+                        client.logout(session_state, options);
                     }
                 }
                 // There is a bug in yew, which panics during re-rendering, which might be triggered
-                // by the next step. So we logout first, which re-directs. And so running into that
-                // issue doesn't harm as, as we left the page anyway.
+                // by the next step. Doing the update later, might not trigger the issue as it might
+                // cause the application to navigate to a different page.
                 self.update_state(
                     OAuth2Context::NotAuthenticated {
                         reason: Reason::Logout,

@@ -6,6 +6,7 @@ pub use self::oauth2::*;
 #[cfg(feature = "openid")]
 pub use openid::*;
 
+use crate::agent::LogoutOptions;
 use crate::{
     agent::{InnerConfig, OAuth2Error},
     context::OAuth2Context,
@@ -57,7 +58,10 @@ pub trait Client: 'static + Sized + Clone + Debug {
         session_state: Self::SessionState,
     ) -> Result<(OAuth2Context, Self::SessionState), OAuth2Error>;
 
-    fn logout(&self, _session_state: Self::SessionState) {}
+    /// Trigger the logout of the session
+    ///
+    /// Clients may choose to contact some back-channel or redirect to a logout URL.
+    fn logout(&self, _session_state: Self::SessionState, _options: LogoutOptions) {}
 }
 
 /// Convert a duration to a timestamp, in seconds.

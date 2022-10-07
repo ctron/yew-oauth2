@@ -7,13 +7,13 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.3"
+yew-oauth2 = "0.4"
 ```
 
 By default, the `router` integration is disabled, you can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.3", features = ["router"] }
+yew-oauth2 = { version = "0.4", features = ["router"] }
 ```
 
 ## OpenID Connect
@@ -38,9 +38,9 @@ openidconnect = { git = "https://github.com/ctron/openidconnect-rs", rev = "6ca4
 
 Also see: https://github.com/ramosbugs/openidconnect-rs/pull/58
 
-## Example
+## Examples
 
-A quick example, see the full example here: [yew-oauth2-example](yew-oauth2-example/)
+A quick example how to use it (see below for more complete examples):
 
 ```rust
 
@@ -97,6 +97,30 @@ impl Component for MyApplication {
     }
 }
 ```
+
+This repository also has some complete examples:
+
+<dl>
+<dt>
+
+[yew-oauth2-example](yew-oauth2-example/) </dt>
+<dd>
+A complete example, hiding everything behind a "login" page, and revealing the content once the user logged in.
+
+Use with either OpenID Connect or OAuth2.
+</dd>
+
+<dt>
+
+[yew-oauth2-redirect-example](yew-oauth2-redirect-example/) </dt>
+<dd>
+A complete example, showing the full menu structure, but redirecting the user automatically to the login server
+when required.
+
+Use with either OpenID Connect or OAuth2.
+</dd>
+
+</dl>
 
 ### Testing
 

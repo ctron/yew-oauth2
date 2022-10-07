@@ -9,9 +9,13 @@ use std::marker::PhantomData;
 use yew::{context::ContextHandle, prelude::*};
 
 pub trait Redirector: 'static {
-    type Properties: yew::Properties;
+    type Properties: RedirectorProperties;
 
     fn logout(props: &Self::Properties);
+}
+
+pub trait RedirectorProperties: yew::Properties {
+    fn children(&self) -> Option<&Children>;
 }
 
 #[derive(Debug, Clone)]
@@ -64,15 +68,20 @@ where
 
         match msg {
             Self::Message::Context(auth) => {
+                let changed = self.auth.as_ref() != Some(&auth);
                 self.apply_state(ctx, auth);
+                changed
             }
         }
-        false
     }
 
-    fn view(&self, _ctx: &Context<Self>) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         match self.auth {
             None => missing_context(),
+            Some(OAuth2Context::Authenticated(..)) => match ctx.props().children() {
+                Some(children) => html!({for children.iter()}),
+                None => html!(),
+            },
             _ => html!(),
         }
     }
@@ -88,6 +97,8 @@ where
             return;
         }
 
+        log::debug!("Current state: {:?}, new state: {:?}", self.auth, auth);
+
         match &auth {
             OAuth2Context::NotInitialized
             | OAuth2Context::Failed(..)
@@ -100,8 +111,15 @@ where
                     super::start_login::<C>();
                 }
                 Reason::Expired | Reason::Logout => {
-                    // expired or logged out explicitly, then redirect to logout page
-                    R::logout(ctx.props());
+                    match self.auth {
+                        None | Some(OAuth2Context::NotInitialized) => {
+                            super::start_login::<C>();
+                        }
+                        _ => {
+                            // expired or logged out explicitly, then redirect to logout page
+                            R::logout(ctx.props());
+                        }
+                    }
                 }
             },
         }

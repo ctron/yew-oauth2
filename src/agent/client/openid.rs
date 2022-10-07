@@ -1,3 +1,4 @@
+use crate::agent::LogoutOptions;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
@@ -37,7 +38,7 @@ const POST_LOGOUT_DIRECT: &str = "post_logout_redirect_uri";
 pub struct OpenIdClient {
     client: CoreClient,
     end_session_url: Option<Url>,
-    after_logout_url: Option<Url>,
+    after_logout_url: Option<String>,
     post_logout_redirect_name: Option<String>,
 }
 
@@ -98,14 +99,7 @@ impl Client for OpenIdClient {
             })?
             .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
 
-        let after_logout_url = config
-            .additional
-            .after_logout_url
-            .map(|url| Url::parse(&url))
-            .transpose()
-            .map_err(|err| {
-                OAuth2Error::Configuration(format!("Unable to parse after_logout_url: {err}"))
-            })?;
+        let after_logout_url = config.additional.after_logout_url;
 
         let client =
             CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
@@ -223,7 +217,7 @@ impl Client for OpenIdClient {
         ))
     }
 
-    fn logout(&self, session_state: Self::SessionState) {
+    fn logout(&self, session_state: Self::SessionState, options: LogoutOptions) {
         if let Some(url) = &self.end_session_url {
             let mut url = url.clone();
 
@@ -235,17 +229,43 @@ impl Client for OpenIdClient {
             url.query_pairs_mut()
                 .append_pair("id_token_hint", &session_state.0);
 
-            if let Some(after) = &self.after_logout_url {
-                url.query_pairs_mut().append_pair(name, after.as_str());
-            } else if let Ok(current) = window().location().href() {
-                url.query_pairs_mut().append_pair(name, &current);
+            if let Some(after) = options
+                .target
+                .map(|url| url.to_string())
+                .or_else(|| self.after_logout_url())
+            {
+                url.query_pairs_mut().append_pair(name, &after);
             }
 
             log::info!("Navigating to: {url}");
 
-            window().location().set_href(url.as_str()).ok();
+            window().location().replace(url.as_str()).ok();
         } else {
-            log::warn!("Found not session end URL");
+            log::warn!("Found no session end URL");
+        }
+    }
+}
+
+impl OpenIdClient {
+    fn after_logout_url(&self) -> Option<String> {
+        if let Some(after) = &self.after_logout_url {
+            if Url::parse(after).is_ok() {
+                // test if the is an absolute URL
+                return Some(after.to_string());
+            }
+
+            window()
+                .location()
+                .href()
+                .ok()
+                .and_then(|url| {
+                    Url::parse(&url)
+                        .and_then(|current| current.join(after))
+                        .ok()
+                })
+                .map(|u| u.to_string())
+        } else {
+            window().location().href().ok()
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::{Redirect, Redirector};
+use super::{Redirect, Redirector, RedirectorProperties};
 use gloo_utils::window;
 use yew::prelude::*;
 
@@ -8,13 +8,23 @@ impl Redirector for LocationRedirector {
     type Properties = LocationProps;
 
     fn logout(props: &Self::Properties) {
+        log::debug!("Navigate due to logout: {}", props.logout_href);
         window().location().set_href(&props.logout_href).ok();
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Properties)]
+#[derive(Clone, Debug, PartialEq, Properties)]
 pub struct LocationProps {
+    #[prop_or_default]
+    pub children: Option<Children>,
+
     pub logout_href: String,
+}
+
+impl RedirectorProperties for LocationProps {
+    fn children(&self) -> Option<&Children> {
+        self.children.as_ref()
+    }
 }
 
 pub mod oauth2 {

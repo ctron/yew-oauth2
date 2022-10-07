@@ -1,11 +1,10 @@
-use crate::context::Authentication;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
         InnerConfig, OAuth2Error,
     },
     config::oauth2,
-    context::OAuth2Context,
+    context::{Authentication, OAuth2Context},
 };
 use ::oauth2::{
     basic::{BasicClient, BasicTokenResponse},
