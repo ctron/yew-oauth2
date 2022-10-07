@@ -1,3 +1,5 @@
+//! The main, wrapping [`OAuth2`] component
+
 use crate::{
     agent::{AgentConfiguration, Client, OAuth2Bridge, OAuth2Operations, Out},
     context::OAuth2Context,
@@ -5,16 +7,23 @@ use crate::{
 use std::time::Duration;
 use yew::prelude::*;
 
+/// Properties for the context component.
 #[derive(Clone, Debug, Properties)]
 pub struct Props<C: Client> {
+    /// The client configuration
     pub config: C::Configuration,
 
+    /// Scopes to request for the session
     #[prop_or_default]
     pub scopes: Vec<String>,
 
+    /// The grace period for the session timeout
+    ///
+    /// The amount of time before the token expiration when the agent will refresh it.
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
 
+    /// Children which will have access to the [`OAuth2Context`].
     #[prop_or_default]
     pub children: Children,
 }
@@ -37,6 +46,7 @@ pub struct OAuth2<C: Client> {
     config: AgentConfiguration<C>,
 }
 
+#[doc(hidden)]
 pub enum Msg {
     Context(OAuth2Context),
 }
@@ -107,9 +117,11 @@ impl<C: Client> OAuth2<C> {
 
 #[cfg(feature = "openid")]
 pub mod openid {
+    //! Convenient access to OpenID Connect context
     pub type OAuth2 = super::OAuth2<crate::agent::client::OpenIdClient>;
 }
 
 pub mod oauth2 {
+    //! Convenient access to OAuth2 context
     pub type OAuth2 = super::OAuth2<crate::agent::client::OAuth2Client>;
 }

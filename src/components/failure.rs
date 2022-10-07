@@ -1,7 +1,10 @@
+//! The [`Failure`] component
+
 use super::missing_context;
 use crate::context::OAuth2Context;
 use yew::prelude::*;
 
+/// Properties for the [`Failure`] component
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct FailureProps {
     #[prop_or_default]

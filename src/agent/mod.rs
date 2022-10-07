@@ -1,3 +1,4 @@
+//! The Yew agent, working in the background to manage the session and refresh tokens.
 pub mod client;
 mod support;
 
@@ -114,7 +115,7 @@ pub struct InnerConfig {
 
 /// The OAuth2 state agent.
 ///
-/// It is being set up by the [`OAuth2`] component.
+/// It is being set up by the [`crate::components::context::OAuth2`] component.
 pub struct OAuth2Agent<C: Client> {
     link: AgentLink<Self>,
     client: Option<C>,

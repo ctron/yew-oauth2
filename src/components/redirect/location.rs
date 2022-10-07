@@ -1,7 +1,10 @@
+//! Redirect by setting the browser's location directly.
+
 use super::{Redirect, Redirector, RedirectorProperties};
 use gloo_utils::window;
 use yew::prelude::*;
 
+/// A redirector using the browsers location.
 pub struct LocationRedirector {}
 
 impl Redirector for LocationRedirector {
@@ -28,6 +31,7 @@ impl RedirectorProperties for LocationProps {
 }
 
 pub mod oauth2 {
+    //! Convenient access for the OAuth2 variant
     use super::*;
     use crate::agent::client::OAuth2Client as Client;
     pub type LocationRedirect = Redirect<Client, LocationRedirector>;
@@ -35,6 +39,7 @@ pub mod oauth2 {
 
 #[cfg(feature = "openid")]
 pub mod openid {
+    //! Convenient access for the Open ID Connect variant
     use super::*;
     use crate::agent::client::OpenIdClient as Client;
     pub type LocationRedirect = Redirect<Client, LocationRedirector>;

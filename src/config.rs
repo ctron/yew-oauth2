@@ -1,3 +1,5 @@
+//! Configuration
+
 use serde::{Deserialize, Serialize};
 
 pub mod openid {
@@ -35,8 +37,11 @@ pub mod oauth2 {
     /// Plain OAuth2 client configuration
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Config {
+        /// The client ID
         pub client_id: String,
+        /// The authentication URL
         pub auth_url: String,
+        /// The token exchange URL
         pub token_url: String,
     }
 

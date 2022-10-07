@@ -1,3 +1,5 @@
+//! Redirect by pushing a new [`yew_router_nested::route::Route`].
+
 use super::{Redirect, Redirector, RedirectorProperties};
 use std::marker::PhantomData;
 use yew::prelude::*;
@@ -7,6 +9,7 @@ use yew_router_nested::{
     RouteState, Switch,
 };
 
+/// A redirector using Yew's Router, and th Browser's History API.
 pub struct RouterRedirector<R, STATE = ()>
 where
     R: Switch + PartialEq + Clone + 'static,
@@ -49,6 +52,7 @@ where
 }
 
 pub mod oauth2 {
+    //! Convenient access for the OAuth2 variant
     use super::*;
     use crate::agent::client::OAuth2Client;
     pub type RouterRedirect<R> = Redirect<OAuth2Client, RouterRedirector<R>>;
@@ -56,6 +60,7 @@ pub mod oauth2 {
 
 #[cfg(feature = "openid")]
 pub mod openid {
+    //! Convenient access for the Open ID Connect variant
     use super::*;
     use crate::agent::client::OpenIdClient;
     pub type RouterRedirect<R> = Redirect<OpenIdClient, RouterRedirector<R>>;

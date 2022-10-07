@@ -1,3 +1,5 @@
+//! Components used when rendering HTML
+
 pub mod authenticated;
 pub mod context;
 pub mod failure;
@@ -5,7 +7,7 @@ pub mod noauth;
 pub mod redirect;
 pub mod use_authentication;
 
-// only put use common components
+// only put pub use for common components
 
 pub use authenticated::*;
 pub use failure::*;

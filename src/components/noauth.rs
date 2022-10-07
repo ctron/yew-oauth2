@@ -1,7 +1,10 @@
+//! The [`NotAuthenticated`] component
+
 use super::missing_context;
 use crate::context::OAuth2Context;
 use yew::prelude::*;
 
+/// Properties for the [`NotAuthenticated`] component
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
     pub children: Children,

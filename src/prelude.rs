@@ -1,3 +1,5 @@
+//! The prelude, includes most things you will need.
+
 pub use crate::agent::{
     AgentConfiguration, LoginOptions, OAuth2Bridge, OAuth2Dispatcher, OAuth2Error, OAuth2Operations,
 };

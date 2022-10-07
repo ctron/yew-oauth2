@@ -1,9 +1,13 @@
+//! The [`Authenticated`] component
+
 use super::missing_context;
 use crate::context::OAuth2Context;
 use yew::prelude::*;
 
+/// Properties for the [`Authenticated`] component
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct Props {
+    /// The children to show then the context is authenticated.
     pub children: Children,
 }
 

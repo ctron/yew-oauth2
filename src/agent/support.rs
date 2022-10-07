@@ -4,6 +4,7 @@ use std::ops::{Deref, DerefMut};
 use yew::{html::Scope, Callback, Component};
 use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 
+/// A [`Dispatcher`] for the OAuth2 agent, implements [`OAuth2Operations`].
 pub struct OAuth2Dispatcher<C: Client>(Dispatcher<OAuth2Agent<C>>);
 
 impl<C: Client> OAuth2Dispatcher<C> {
@@ -32,6 +33,7 @@ impl<C: Client> DerefMut for OAuth2Dispatcher<C> {
     }
 }
 
+/// A [`Bridge`] for the OAuth2 agent, implements [`OAuth2Operations`].
 pub struct OAuth2Bridge<C: Client>(Box<dyn Bridge<OAuth2Agent<C>>>);
 
 impl<C: Client> OAuth2Bridge<C> {
@@ -65,17 +67,34 @@ impl<C: Client> DerefMut for OAuth2Bridge<C> {
     }
 }
 
+/// Operations for the OAuth2 agent
 pub trait OAuth2Operations<C: Client> {
+    /// Initialize the agent with a configuration.
+    ///
+    /// This is normally done by the [`crate::components::context::OAuth2`] context component.
     fn init(&mut self, config: AgentConfiguration<C>);
+    /// Reconfigure the agent with a configuration.
+    ///
+    /// This is normally done by the [`crate::components::context::OAuth2`] context component.
     fn configure(&mut self, config: AgentConfiguration<C>);
+
+    /// Start a login flow with default options.
     fn start_login(&mut self) {
         self.start_login_opts(Default::default());
     }
+    /// Start a login flow.
     fn start_login_opts(&mut self, options: LoginOptions);
+
+    /// Request the current state from the agent.
+    ///
+    /// The response will be sent over the link created by the bridge.
     fn request_state(&mut self);
+
+    /// Trigger the logout with default options.
     fn logout(&mut self) {
         self.logout_opts(Default::default());
     }
+    /// Trigger the logout.
     fn logout_opts(&mut self, options: LogoutOptions);
 }
 

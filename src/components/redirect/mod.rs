@@ -1,3 +1,5 @@
+//! Components for redirecting the user
+
 pub mod location;
 #[cfg(feature = "yew-router-nested")]
 pub mod router;
@@ -23,6 +25,7 @@ pub enum Msg {
     Context(OAuth2Context),
 }
 
+/// A component which redirect the user in case the context is not authenticated.
 pub struct Redirect<C, R>
 where
     C: Client,

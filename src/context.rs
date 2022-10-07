@@ -1,3 +1,5 @@
+//! The Authentication Context
+
 use yew::{context::ContextHandle, html::Scope, prelude::*};
 
 #[cfg(feature = "openid")]
@@ -6,6 +8,7 @@ pub type Claims = openidconnect::IdTokenClaims<
     openidconnect::core::CoreGenderClaim,
 >;
 
+/// The authentication information
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Authentication {
     /// The access token
@@ -19,6 +22,7 @@ pub struct Authentication {
     pub expires: Option<u64>,
 }
 
+/// The authentication context
 #[derive(Clone, Debug, PartialEq)]
 pub enum OAuth2Context {
     /// The agent is not initialized yet.
@@ -35,6 +39,10 @@ pub enum OAuth2Context {
 }
 
 impl OAuth2Context {
+    /// Get the optional authentication.
+    ///
+    /// Allows easy access to the authentication information. Will return [`None`] if the
+    /// context is not authenticated.
     pub fn authentication(&self) -> Option<&Authentication> {
         match self {
             Self::Authenticated(auth) => Some(auth),
@@ -138,6 +146,7 @@ where
     }
 }
 
+/// Functional component for using the context.
 pub trait UseContext {
     type Message;
 

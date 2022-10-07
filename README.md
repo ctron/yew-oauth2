@@ -50,7 +50,7 @@ use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 impl Component for MyApplication {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let login = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>:::new().start_login();
+            OAuth2Dispatcher::<Client>::new().start_login();
         });
         let logout = ctx.link().callback_once(|_: MouseEvent| {
             OAuth2Dispatcher::<Client>::new().logout();
