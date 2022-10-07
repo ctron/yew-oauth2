@@ -44,7 +44,7 @@
 //!     };
 //!
 //!     html!(
-//!       <OAuth2 config>
+//!       <OAuth2 config={config}>
 //!         <Failure><FailureMessage/></Failure>
 //!         <Authenticated>
 //!           <button onclick={logout}>{ "Logout" }</button>
