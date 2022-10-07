@@ -10,6 +10,7 @@ pub type Claims = openidconnect::IdTokenClaims<
 
 /// The authentication information
 #[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(not(feature = "openid"), derive(Eq))]
 pub struct Authentication {
     /// The access token
     pub access_token: String,
@@ -24,6 +25,7 @@ pub struct Authentication {
 
 /// The authentication context
 #[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(not(feature = "openid"), derive(Eq))]
 pub enum OAuth2Context {
     /// The agent is not initialized yet.
     NotInitialized,

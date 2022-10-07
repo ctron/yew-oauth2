@@ -42,7 +42,7 @@ pub fn failure(props: &FailureProps) -> Html {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Properties)]
+#[derive(Clone, Debug, PartialEq, Eq, Properties)]
 pub struct FailureMessageProps {
     #[prop_or_default]
     pub id: Option<String>,
