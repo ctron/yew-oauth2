@@ -51,14 +51,14 @@ impl Component for Application {
 
         #[cfg(not(feature = "openid"))]
         let config = Config {
-            client_id: "frontend".into(),
+            client_id: "example".into(),
             auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
             token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
         };
 
         #[cfg(feature = "openid")]
         let config = Config {
-            client_id: "frontend".into(),
+            client_id: "example".into(),
             issuer_url: "http://localhost:8081/realms/master".into(),
             additional: Default::default(),
         };

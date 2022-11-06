@@ -3,7 +3,7 @@ version: "3.9"
 services:
 
   keycloak:
-    image: quay.io/keycloak/keycloak:19.0.1
+    image: quay.io/keycloak/keycloak:20.0.0
     command: start-dev
     environment:
       - KEYCLOAK_ADMIN=admin
@@ -11,3 +11,46 @@ services:
       - KEYCLOAK_DB=dev-file
     ports:
       - "8081:8080"
+
+  init_keycloak:
+    image: quay.io/keycloak/keycloak:20.0.0
+    entrypoint: /usr/bin/bash
+    environment:
+      - KCADM_PATH=/opt/keycloak/bin/kcadm.sh
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin123456
+      - REALM=master
+
+    command:
+      - -exc
+      - |
+        # wait until keycloak is ready
+        while ! curl -sf "$$KEYCLOAK_URL" --output /dev/null; do
+          echo "Waiting for Keycloak to start up..."
+          sleep 5
+        done
+        
+        echo "Keycloak ready"
+        
+        kcadm() { local cmd="$$1" ; shift ; "$$KCADM_PATH" "$$cmd" --config /tmp/kcadm.config "$$@" ; }
+        
+        # login
+        kcadm config credentials config --server "$$KEYCLOAK_URL" --realm master --user "$$KEYCLOAK_ADMIN" --password "$$KEYCLOAK_ADMIN_PASSWORD"
+        
+        # create client
+        kcadm create clients -r $${REALM} -f - << EOF
+        {
+          "enabled": true,
+          "clientId": "example",
+          "publicClient": true,
+          "standardFlowEnabled": true,
+          "fullScopeAllowed": true,
+          "webOrigins": ["*"],
+          "redirectUris": ["http://localhost:*", "http://localhost:*/*", "http://127.0.0.1:*", "http://127.0.0.1:*/*" ],
+          "attributes": {
+            "access.token.lifespan": "300",
+            "post.logout.redirect.uris": "+"
+          }
+        }
+        EOF
