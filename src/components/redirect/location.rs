@@ -10,7 +10,11 @@ pub struct LocationRedirector {}
 impl Redirector for LocationRedirector {
     type Properties = LocationProps;
 
-    fn logout(props: &Self::Properties) {
+    fn new<COMP: Component>(_: &Context<COMP>) -> Self {
+        Self {}
+    }
+
+    fn logout(&self, props: &Self::Properties) {
         log::debug!("Navigate due to logout: {}", props.logout_href);
         window().location().set_href(&props.logout_href).ok();
     }

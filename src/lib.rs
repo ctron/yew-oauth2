@@ -70,9 +70,14 @@ pub mod openid {
     pub use crate::agent::client::OpenIdClient as Client;
     pub use crate::components::context::openid::*;
     pub use crate::components::redirect::location::openid::*;
-    #[cfg(feature = "yew-router-nested")]
+    #[cfg(feature = "yew-nested-router")]
     pub use crate::components::redirect::router::openid::*;
     pub use crate::config::openid::*;
+
+    #[yew::hook]
+    pub fn use_auth_agent() -> Option<crate::components::context::Agent<Client>> {
+        crate::components::context::use_auth_agent::<Client>()
+    }
 }
 
 pub mod oauth2 {
@@ -80,7 +85,12 @@ pub mod oauth2 {
     pub use crate::agent::client::OAuth2Client as Client;
     pub use crate::components::context::oauth2::*;
     pub use crate::components::redirect::location::oauth2::*;
-    #[cfg(feature = "yew-router-nested")]
+    #[cfg(feature = "yew-nested-router")]
     pub use crate::components::redirect::router::oauth2::*;
     pub use crate::config::oauth2::*;
+
+    #[yew::hook]
+    pub fn use_auth_agent() -> Option<crate::components::context::Agent<Client>> {
+        crate::components::context::use_auth_agent::<Client>()
+    }
 }

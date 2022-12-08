@@ -6,9 +6,8 @@ pub use self::oauth2::*;
 #[cfg(feature = "openid")]
 pub use openid::*;
 
-use crate::agent::LogoutOptions;
 use crate::{
-    agent::{InnerConfig, OAuth2Error},
+    agent::{InnerConfig, LogoutOptions, OAuth2Error},
     context::OAuth2Context,
 };
 use async_trait::async_trait;

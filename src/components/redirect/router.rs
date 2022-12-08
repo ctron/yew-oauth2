@@ -1,41 +1,52 @@
 //! Redirect by pushing a new [`yew_router_nested::route::Route`].
 
 use super::{Redirect, Redirector, RedirectorProperties};
-use std::marker::PhantomData;
 use yew::prelude::*;
-use yew_router_nested::{
-    agent::{RouteAgentDispatcher, RouteRequest},
-    prelude::Route,
-    RouteState, Switch,
-};
+use yew_nested_router::prelude::*;
 
-/// A redirector using Yew's Router, and th Browser's History API.
-pub struct RouterRedirector<R, STATE = ()>
+/// A redirector using Yew's Router, and the Browser's History API.
+pub struct RouterRedirector<R>
 where
-    R: Switch + PartialEq + Clone + 'static,
-    STATE: 'static + RouteState,
+    R: Target + 'static,
 {
-    _marker: PhantomData<(R, STATE)>,
+    router: Option<RouterContext<R>>,
+    _handle: Option<ContextHandle<RouterContext<R>>>,
 }
 
-impl<R, STATE> Redirector for RouterRedirector<R, STATE>
+impl<R> Redirector for RouterRedirector<R>
 where
-    R: Switch + PartialEq + Clone + 'static,
-    STATE: 'static + RouteState,
+    R: Target + 'static,
 {
     type Properties = RouterProps<R>;
 
-    fn logout(props: &Self::Properties) {
-        let route = Route::<STATE>::from(props.logout.clone());
+    fn new<COMP: Component>(ctx: &Context<COMP>) -> Self {
+        // while the "route" can change, the "router" itself does not.
+        let cb = Callback::from(|_| {});
+        let (router, handle) = match ctx.link().context::<RouterContext<R>>(cb) {
+            Some((router, handle)) => (Some(router), Some(handle)),
+            None => (None, None),
+        };
+
+        Self {
+            router,
+            _handle: handle,
+        }
+    }
+
+    fn logout(&self, props: &Self::Properties) {
+        let route = props.logout.clone();
         log::debug!("ChangeRoute due to logout: {:?}", route);
-        RouteAgentDispatcher::<STATE>::new().send(RouteRequest::ChangeRoute(route));
+
+        if let Some(router) = &self.router {
+            router.go(route);
+        }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct RouterProps<R>
 where
-    R: Switch + PartialEq + Clone + 'static,
+    R: Target + 'static,
 {
     #[prop_or_default]
     pub children: Option<Children>,
@@ -44,7 +55,7 @@ where
 
 impl<R> RedirectorProperties for RouterProps<R>
 where
-    R: Switch + PartialEq + Clone + 'static,
+    R: Target + 'static,
 {
     fn children(&self) -> Option<&Children> {
         self.children.as_ref()

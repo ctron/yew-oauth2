@@ -1,89 +1,52 @@
 use crate::components::*;
 use yew::prelude::*;
+use yew_nested_router::{components::*, prelude::*};
 use yew_oauth2::prelude::*;
-use yew_router::prelude::*;
 
 #[cfg(not(feature = "openid"))]
 use yew_oauth2::oauth2::*;
 #[cfg(feature = "openid")]
 use yew_oauth2::openid::*;
 
-#[cfg(not(feature = "openid"))]
-use yew_oauth2::oauth2::Client;
-#[cfg(feature = "openid")]
-use yew_oauth2::openid::Client;
-
-#[derive(Switch, Debug, Clone, PartialEq, Eq)]
+#[derive(Target, Debug, Clone, PartialEq, Eq)]
 pub enum AppRoute {
-    #[to = "/component"]
     Component,
-    #[to = "/function"]
     Function,
-    #[to = "/use"]
     UseAuthentication,
     #[cfg(feature = "openid")]
-    #[to = "/identity"]
     Identity,
-    #[to = "/"]
+    #[target(index)]
     Index,
 }
 
-#[derive(Clone, Default, Debug, PartialEq, Properties)]
-pub struct Props {}
+#[function_component(Content)]
+pub fn content() -> Html {
+    let agent = use_auth_agent().expect("Requires OAuth2Context component in parent hierarchy");
 
-pub struct Application {}
+    let login = {
+        let agent = agent.clone();
+        Callback::from(move |_: MouseEvent| {
+            if let Err(err) = agent.start_login() {
+                log::warn!("Failed to start login: {err}");
+            }
+        })
+    };
+    let logout = Callback::from(move |_: MouseEvent| {
+        if let Err(err) = agent.logout() {
+            log::warn!("Failed to logout: {err}");
+        }
+    });
 
-impl Component for Application {
-    type Message = ();
-    type Properties = Props;
+    #[cfg(feature = "openid")]
+    let openid_routes = html! (
+        <li><Link<AppRoute> target={AppRoute::Identity}> { "Identity" } </Link<AppRoute>></li>
+    );
+    #[cfg(not(feature = "openid"))]
+    let openid_routes = html!();
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self {}
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let login = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>::new().start_login();
-        });
-        let logout = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>::new().logout();
-        });
-
-        #[cfg(not(feature = "openid"))]
-        let config = Config {
-            client_id: "example".into(),
-            auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
-            token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
-        };
-
-        #[cfg(feature = "openid")]
-        let config = Config {
-            client_id: "example".into(),
-            issuer_url: "http://localhost:8081/realms/master".into(),
-            additional: Default::default(),
-        };
-
-        let mode = if cfg!(feature = "openid") {
-            "OpenID Connect"
-        } else {
-            "pure OAuth2"
-        };
-
-        #[cfg(feature = "openid")]
-        let openid_routes = html! (
-            <li><RouterAnchor<AppRoute> route={AppRoute::Identity}> { "Identity" } </RouterAnchor<AppRoute>></li>
-        );
-        #[cfg(not(feature = "openid"))]
-        let openid_routes = html!();
-
-        html!(
-            <>
-            <h1> { "Login example (" } {mode} { ")"} </h1>
-
-            <OAuth2
-                {config}
-                scopes={vec!["openid".to_string()]}
-                >
+    html!(
+        <>
+            <Router<AppRoute>>
                 <Failure>
                     <ul>
                         <li><FailureMessage/></li>
@@ -94,51 +57,78 @@ impl Component for Application {
                         <button onclick={logout}>{ "Logout" }</button>
                     </p>
                     <ul>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Index}> { "Index" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Component}> { "Component" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Function}> { "Function" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::UseAuthentication}> { "Use" } </RouterAnchor<AppRoute>></li>
+                        <li><Link<AppRoute> target={AppRoute::Index}> { "Index" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> target={AppRoute::Component}> { "Component" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> target={AppRoute::Function}> { "Function" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> target={AppRoute::UseAuthentication}> { "Use" } </Link<AppRoute>></li>
                         { openid_routes }
                     </ul>
                     <Expiration/>
-                    <Router<AppRoute>
-                        render = { Router::render(|switch: AppRoute| {
-                            match switch {
-                                AppRoute::Index => html!(<p> { "You are logged in"} </p>),
-                                AppRoute::Component => html!(<ViewAuthInfoComponent />),
-                                AppRoute::Function => html!(<ViewAuthInfoFunctional />),
-                                AppRoute::UseAuthentication => html!(
-                                    <UseAuthentication<ViewUseAuth>>
-                                        <ViewUseAuth/>
-                                    </UseAuthentication<ViewUseAuth>>
-                                ),
-                                #[cfg(feature = "openid")]
-                                AppRoute::Identity => html!(<ViewIdentity />),
-                            }
-                        })}
-                    />
+                    <Switch<AppRoute> render={|switch| match switch {
+                        AppRoute::Index => html!(<p> { "You are logged in"} </p>),
+                        AppRoute::Component => html!(<ViewAuthInfoComponent />),
+                        AppRoute::Function => html!(<ViewAuthInfoFunctional />),
+                        AppRoute::UseAuthentication => html!(
+                            <UseAuthentication<ViewUseAuth>>
+                                <ViewUseAuth/>
+                            </UseAuthentication<ViewUseAuth>>
+                        ),
+                        #[cfg(feature = "openid")]
+                        AppRoute::Identity => html!(<ViewIdentity />),
+                    }}/>
                 </Authenticated>
                 <NotAuthenticated>
-                    <Router<AppRoute>
-                        render = { Router::render(move |switch: AppRoute| {
-                            match switch {
-                                AppRoute::Index => html!(
-                                    <>
-                                        <p>
-                                            { "You need to log in" }
-                                        </p>
-                                        <p>
-                                            <button onclick={login.clone()}>{ "Login" }</button>
-                                        </p>
-                                    </>
-                                ),
-                                _ => html!(<LocationRedirect logout_href="/" />),
-                            }
-                        })}
-                    />
+                    <Switch<AppRoute> render={move |switch| match switch {
+                        AppRoute::Index => html!(
+                            <>
+                                <p>
+                                    { "You need to log in" }
+                                </p>
+                                <p>
+                                    <button onclick={login.clone()}>{ "Login" }</button>
+                                </p>
+                            </>
+                        ),
+                        _ => html!(<LocationRedirect logout_href="/" />),
+                    }} />
                 </NotAuthenticated>
+            </Router<AppRoute>>
+        </>
+    )
+}
+
+#[function_component(Application)]
+pub fn app() -> Html {
+    #[cfg(not(feature = "openid"))]
+    let config = Config {
+        client_id: "example".into(),
+        auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
+        token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
+    };
+
+    #[cfg(feature = "openid")]
+    let config = Config {
+        client_id: "example".into(),
+        issuer_url: "http://localhost:8081/realms/master".into(),
+        additional: Default::default(),
+    };
+
+    let mode = if cfg!(feature = "openid") {
+        "OpenID Connect"
+    } else {
+        "pure OAuth2"
+    };
+
+    html!(
+        <>
+            <h1> { "Login example (" } {mode} { ")"} </h1>
+
+            <OAuth2
+                {config}
+                scopes={vec!["openid".to_string()]}
+                >
+                <Content/>
             </OAuth2>
-            </>
-        )
-    }
+        </>
+    )
 }
