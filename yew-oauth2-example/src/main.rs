@@ -13,6 +13,6 @@ const LOG_LEVEL: log::Level = log::Level::Trace;
 pub fn main() -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::new(LOG_LEVEL));
     log::info!("Starting application");
-    yew::start_app::<app::Application>();
+    yew::Renderer::<app::Application>::new().render();
     Ok(())
 }

@@ -73,6 +73,7 @@ pub trait OAuth2Operations<C: Client> {
     ///
     /// This is normally done by the [`crate::components::context::OAuth2`] context component.
     fn init(&mut self, config: AgentConfiguration<C>);
+
     /// Reconfigure the agent with a configuration.
     ///
     /// This is normally done by the [`crate::components::context::OAuth2`] context component.
@@ -85,15 +86,11 @@ pub trait OAuth2Operations<C: Client> {
     /// Start a login flow.
     fn start_login_opts(&mut self, options: LoginOptions);
 
-    /// Request the current state from the agent.
-    ///
-    /// The response will be sent over the link created by the bridge.
-    fn request_state(&mut self);
-
     /// Trigger the logout with default options.
     fn logout(&mut self) {
         self.logout_opts(Default::default());
     }
+
     /// Trigger the logout.
     fn logout_opts(&mut self, options: LogoutOptions);
 }

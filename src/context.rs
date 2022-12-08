@@ -65,6 +65,12 @@ impl OAuth2Context {
     }
 }
 
+/// Get the authentication state.
+#[hook]
+pub fn use_auth_state() -> Option<OAuth2Context> {
+    use_context()
+}
+
 /// The reason why the context is un-authenticated.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Reason {

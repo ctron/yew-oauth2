@@ -1,6 +1,6 @@
 [package]
 name = "yew-oauth2"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Jens Reimann <jreimann@redhat.com>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -21,20 +21,20 @@ num-traits = "0.2"
 oauth2 = "4"
 reqwest = "0.11"
 serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["sync"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-yew = "0.19"
-yew-agent = "0.1"
+yew = "0.20"
 
 web-sys = { version = "0.3", features = [
     "Window",
 ] }
 
-openidconnect = { version = "2.2", optional = true }
-yew-router-nested = { version = "0.16.1", optional = true }
+openidconnect = { version = "2", optional = true }
+yew-nested-router = { version = "0.0.2", optional = true }
 
 [features]
-router = ["yew-router-nested"]
+router = ["yew-nested-router"]
 openid = ["openidconnect"]
 
 [package.metadata.docs.rs]

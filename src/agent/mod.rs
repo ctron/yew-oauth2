@@ -1,9 +1,15 @@
 //! The Yew agent, working in the background to manage the session and refresh tokens.
 pub mod client;
-mod support;
 
-pub use client::Client;
-pub use support::*;
+mod config;
+mod error;
+mod ops;
+mod state;
+
+pub use client::*;
+pub use config::*;
+pub use error::*;
+pub use ops::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
 use gloo_storage::{SessionStorage, Storage};
@@ -12,67 +18,12 @@ use gloo_utils::{history, window};
 use js_sys::Date;
 use num_traits::cast::ToPrimitive;
 use reqwest::Url;
-use std::{
-    collections::{HashMap, HashSet},
-    fmt::{Debug, Display, Formatter},
-    time::Duration,
-};
+use state::*;
+use std::{collections::HashMap, fmt::Debug, time::Duration};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
-use yew_agent::{Agent, AgentLink, Context, HandlerId};
-
-#[derive(Debug)]
-pub enum OAuth2Error {
-    NotInitialized,
-    Configuration(String),
-    StartLogin(String),
-    LoginResult(String),
-    Storage(String),
-}
-
-impl Display for OAuth2Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotInitialized => f.write_str("not initialized"),
-            Self::Configuration(err) => write!(f, "configuration error: {err}"),
-            Self::StartLogin(err) => write!(f, "start login error: {err}"),
-            Self::LoginResult(err) => write!(f, "login result: {err}"),
-            Self::Storage(err) => write!(f, "storage error: {err}"),
-        }
-    }
-}
-
-impl std::error::Error for OAuth2Error {}
-
-impl From<OAuth2Error> for OAuth2Context {
-    fn from(err: OAuth2Error) -> Self {
-        OAuth2Context::Failed(err.to_string())
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct AgentConfiguration<C: Client> {
-    pub config: C::Configuration,
-    pub scopes: Vec<String>,
-    pub grace_period: Duration,
-}
-
-impl<C: Client> PartialEq for AgentConfiguration<C> {
-    fn eq(&self, other: &Self) -> bool {
-        self.config == other.config
-            && self.scopes == other.scopes
-            && self.grace_period == other.grace_period
-    }
-}
-
-impl<C: Client> Eq for AgentConfiguration<C> {}
-
-#[derive(Debug)]
-pub enum Msg<C: Client> {
-    Configure(Box<Result<(C, InnerConfig), OAuth2Error>>),
-    Change((OAuth2Context, Option<C::SessionState>)),
-    Refresh,
-}
+use yew::Callback;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LoginOptions {
@@ -87,24 +38,52 @@ pub struct LogoutOptions {
     pub target: Option<Url>,
 }
 
-#[derive(Debug)]
-pub enum In<C: Client> {
-    /// Initialize and configure the agent.
-    Init(AgentConfiguration<C>),
-    /// Reconfigure the agent.
+pub enum Msg<C>
+where
+    C: Client,
+{
     Configure(AgentConfiguration<C>),
-    /// Start the login process
-    Login(LoginOptions),
-    /// Request the current state directly
-    RequestState,
-    /// Start the login, might redirect to the logout URL
+    StartLogin(LoginOptions),
     Logout(LogoutOptions),
+    Refresh,
 }
 
-#[derive(Debug)]
-pub enum Out {
-    ContextUpdate(OAuth2Context),
-    Error(OAuth2Error),
+#[derive(Clone, Debug)]
+pub struct Agent<C>
+where
+    C: Client,
+{
+    tx: Sender<Msg<C>>,
+}
+
+impl<C> Agent<C>
+where
+    C: Client,
+{
+    pub fn new<F>(state_callback: F) -> Self
+    where
+        F: Fn(OAuth2Context) + 'static,
+    {
+        let (tx, rx) = channel(128);
+
+        let inner = InnerAgent::new(tx.clone(), state_callback);
+        inner.spawn(rx);
+
+        Self { tx }
+    }
+}
+
+pub struct InnerAgent<C>
+where
+    C: Client,
+{
+    tx: Sender<Msg<C>>,
+    state_callback: Callback<OAuth2Context>,
+    config: Option<InnerConfig>,
+    client: Option<C>,
+    state: OAuth2Context,
+    session_state: Option<C::SessionState>,
+    timeout: Option<Timeout>,
 }
 
 #[derive(Clone, Debug)]
@@ -113,150 +92,57 @@ pub struct InnerConfig {
     grace_period: Duration,
 }
 
-/// The OAuth2 state agent.
-///
-/// It is being set up by the [`crate::components::context::OAuth2`] component.
-pub struct OAuth2Agent<C: Client> {
-    link: AgentLink<Self>,
-    client: Option<C>,
-    config: Option<InnerConfig>,
-
-    clients: HashSet<HandlerId>,
-    state: OAuth2Context,
-    session_state: Option<C::SessionState>,
-
-    timeout: Option<Timeout>,
-}
-
-impl<C: Client> Agent for OAuth2Agent<C> {
-    type Reach = Context<Self>;
-    type Message = Msg<C>;
-    type Input = In<C>;
-    type Output = Out;
-
-    fn create(link: AgentLink<Self>) -> Self {
-        log::debug!("Creating new agent");
-
+impl<C> InnerAgent<C>
+where
+    C: Client,
+{
+    pub fn new<F>(tx: Sender<Msg<C>>, state_callback: F) -> Self
+    where
+        F: Fn(OAuth2Context) + 'static,
+    {
         Self {
-            link,
+            tx,
+            state_callback: Callback::from(state_callback),
             client: None,
             config: None,
-            clients: Default::default(),
             state: OAuth2Context::NotInitialized,
             session_state: None,
             timeout: None,
         }
     }
 
-    fn update(&mut self, msg: Self::Message) {
-        log::debug!("Update: {:?}", msg);
+    fn spawn(self, rx: Receiver<Msg<C>>) {
+        spawn_local(async move {
+            self.run(rx).await;
+        })
+    }
 
+    async fn run(mut self, mut rx: Receiver<Msg<C>>) {
+        loop {
+            match rx.recv().await {
+                Some(msg) => self.process(msg).await,
+                None => {
+                    log::debug!("Agent channel closed");
+                    break;
+                }
+            }
+        }
+    }
+
+    async fn process(&mut self, msg: Msg<C>) {
         match msg {
-            Self::Message::Configure(outcome) => match *outcome {
-                Ok((client, config)) => {
-                    log::debug!("Client created");
-
-                    self.client = Some(client);
-                    self.config = Some(config);
-
-                    if matches!(self.state, OAuth2Context::NotInitialized) {
-                        let detected = self.detect_state();
-                        log::debug!("Detected state: {detected:?}");
-                        match detected {
-                            Ok(true) => {}
-                            Ok(false) => {
-                                self.update_state(
-                                    OAuth2Context::NotAuthenticated {
-                                        reason: Reason::NewSession,
-                                    },
-                                    None,
-                                );
-                            }
-                            Err(err) => {
-                                self.update_state(err.into(), None);
-                            }
-                        }
-                    }
+            Msg::Configure(config) => self.configure(config).await,
+            Msg::StartLogin(login) => {
+                if let Err(err) = self.start_login(login) {
+                    // FIXME: need to report this somehow
+                    log::info!("Failed to start login: {err}");
                 }
-                Err(err) => {
-                    log::debug!("Failed to configure client: {err}");
-                    if matches!(self.state, OAuth2Context::NotInitialized) {
-                        self.update_state(err.into(), None);
-                    }
-                }
-            },
-            Self::Message::Change((state, session_state)) => {
-                self.update_state(state, session_state);
             }
-            Self::Message::Refresh => {
-                self.refresh();
-            }
+            Msg::Logout(logout) => self.logout_opts(logout),
+            Msg::Refresh => self.refresh().await,
         }
     }
 
-    fn connected(&mut self, id: HandlerId) {
-        if id.is_respondable() {
-            self.clients.insert(id);
-        }
-    }
-
-    fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
-        log::debug!("Input: {:?}", msg);
-
-        match msg {
-            Self::Input::Init(config) | Self::Input::Configure(config) => {
-                let link = self.link.clone();
-                spawn_local(async move {
-                    link.send_message(Msg::Configure(Box::new(Self::make_client(config).await)));
-                });
-            }
-            Self::Input::Login(options) => {
-                // start the login
-                if let Err(err) = self.start_login(options) {
-                    log::debug!("Failed to start login: {err}");
-                    if id.is_respondable() {
-                        self.link.respond(id, Out::Error(err));
-                    }
-                }
-            }
-            Self::Input::RequestState => {
-                self.link
-                    .respond(id, Out::ContextUpdate(self.state.clone()));
-            }
-            Self::Input::Logout(options) => {
-                if let Some(client) = &self.client {
-                    if let Some(session_state) = self.session_state.clone() {
-                        // let the client know that log out, clients may navigate to a different
-                        // page
-                        log::debug!("Notify client of logout");
-                        client.logout(session_state, options);
-                    }
-                }
-                // There is a bug in yew, which panics during re-rendering, which might be triggered
-                // by the next step. Doing the update later, might not trigger the issue as it might
-                // cause the application to navigate to a different page.
-                self.update_state(
-                    OAuth2Context::NotAuthenticated {
-                        reason: Reason::Logout,
-                    },
-                    None,
-                );
-            }
-        }
-    }
-
-    fn disconnected(&mut self, id: HandlerId) {
-        if id.is_respondable() {
-            self.clients.remove(&id);
-        }
-    }
-}
-
-const STORAGE_KEY_CSRF_TOKEN: &str = "ctron/oauth2/csrfToken";
-const STORAGE_KEY_LOGIN_STATE: &str = "ctron/oauth2/loginState";
-const STORAGE_KEY_REDIRECT_URL: &str = "ctron/oauth2/redirectUrl";
-
-impl<C: Client> OAuth2Agent<C> {
     fn update_state(&mut self, state: OAuth2Context, session_state: Option<C::SessionState>) {
         log::debug!("update state: {state:?}");
 
@@ -273,28 +159,67 @@ impl<C: Client> OAuth2Agent<C> {
             let now = Date::now() / 1000f64;
             let diff = *expires as f64 - now - grace.as_secs_f64();
 
-            let callback = self.link.callback(|_| Msg::Refresh);
+            let tx = self.tx.clone();
             if diff > 0f64 {
                 // while the API says millis is u32, internally it is i32
                 let millis = (diff * 1000f64).to_i32().unwrap_or(i32::MAX);
                 log::debug!("Starting timeout for: {}ms", millis);
                 self.timeout = Some(Timeout::new(millis as u32, move || {
-                    callback.emit(());
+                    let _ = tx.try_send(Msg::Refresh);
                 }));
             } else {
-                callback.emit(());
+                // token already expired
+                let _ = tx.try_send(Msg::Refresh);
             }
         } else {
             self.timeout = None;
         }
 
-        for handler in &self.clients {
-            self.link
-                .respond(*handler, Out::ContextUpdate(state.clone()));
-        }
+        self.notify_state(state.clone());
 
         self.state = state;
         self.session_state = session_state;
+    }
+
+    fn notify_state(&self, state: OAuth2Context) {
+        self.state_callback.emit(state);
+    }
+
+    /// Called once the configuration process has finished, applying the outcome.
+    async fn configured(&mut self, outcome: Result<(C, InnerConfig), OAuth2Error>) {
+        match outcome {
+            Ok((client, config)) => {
+                log::debug!("Client created");
+
+                self.client = Some(client);
+                self.config = Some(config);
+
+                if matches!(self.state, OAuth2Context::NotInitialized) {
+                    let detected = self.detect_state().await;
+                    log::debug!("Detected state: {detected:?}");
+                    match detected {
+                        Ok(true) => {}
+                        Ok(false) => {
+                            self.update_state(
+                                OAuth2Context::NotAuthenticated {
+                                    reason: Reason::NewSession,
+                                },
+                                None,
+                            );
+                        }
+                        Err(err) => {
+                            self.update_state(err.into(), None);
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                log::debug!("Failed to configure client: {err}");
+                if matches!(self.state, OAuth2Context::NotInitialized) {
+                    self.update_state(err.into(), None);
+                }
+            }
+        }
     }
 
     async fn make_client(config: AgentConfiguration<C>) -> Result<(C, InnerConfig), OAuth2Error> {
@@ -308,52 +233,11 @@ impl<C: Client> OAuth2Agent<C> {
         Ok((client, inner))
     }
 
-    fn current_url() -> Result<Url, String> {
-        let href = window().location().href().map_err(|err| {
-            err.as_string()
-                .unwrap_or_else(|| "unable to get current location".to_string())
-        })?;
-        Url::parse(&href).map_err(|err| err.to_string())
-    }
-
-    fn start_login(&self, options: LoginOptions) -> Result<(), OAuth2Error> {
-        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-        let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-        let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
-
-        let login_context = client.make_login_context(config, redirect_url.clone())?;
-
-        SessionStorage::set(STORAGE_KEY_CSRF_TOKEN, login_context.csrf_token)
-            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
-
-        SessionStorage::set(STORAGE_KEY_LOGIN_STATE, login_context.state)
-            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
-
-        SessionStorage::set(STORAGE_KEY_REDIRECT_URL, redirect_url)
-            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
-
-        let mut login_url = login_context.url;
-
-        login_url.query_pairs_mut().extend_pairs(options.query);
-
-        window()
-            .location()
-            .set_href(login_url.as_str())
-            .map_err(|err| {
-                OAuth2Error::StartLogin(
-                    err.as_string()
-                        .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
-                )
-            })?;
-
-        Ok(())
-    }
-
     /// When initializing, try to detect the state from the URL and session state.
     ///
     /// Returns `false` if there is no authentication state found and the result is final.
     /// Otherwise it returns `true` and spawns a request for e.g. a code exchange.
-    fn detect_state(&self) -> Result<bool, OAuth2Error> {
+    async fn detect_state(&mut self) -> Result<bool, OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
 
         let state = if let Some(state) = Self::find_query_state() {
@@ -394,8 +278,6 @@ impl<C: Client> OAuth2Agent<C> {
                 }
             }
 
-            let link = self.link.clone();
-
             let state: C::LoginState =
                 SessionStorage::get(STORAGE_KEY_LOGIN_STATE).map_err(|err| {
                     OAuth2Error::Storage(format!("Failed to load login state: {err}"))
@@ -411,18 +293,56 @@ impl<C: Client> OAuth2Agent<C> {
 
             let client = client.clone().set_redirect_uri(redirect_url);
 
-            spawn_local(async move {
-                match client.exchange_code(code, state).await {
-                    Ok((state, session_state)) => {
-                        link.send_message(Msg::Change((state, Some(session_state))))
-                    }
-                    Err(err) => link.send_message(Msg::Change((err.into(), None))),
-                }
-            });
+            let result = client.exchange_code(code, state).await;
+            self.update_state_from_result(result);
+
             Ok(true)
         } else {
             log::debug!("Neither an error nor a code. Continue without applying state.");
             Ok(false)
+        }
+    }
+
+    fn update_state_from_result(
+        &mut self,
+        result: Result<(OAuth2Context, C::SessionState), OAuth2Error>,
+    ) {
+        match result {
+            Ok((state, session_state)) => {
+                self.update_state(state, Some(session_state));
+            }
+            Err(err) => {
+                self.update_state(err.into(), None);
+            }
+        }
+    }
+
+    async fn refresh(&mut self) {
+        let (client, session_state) =
+            if let (Some(client), Some(session_state)) = (&self.client, &self.session_state) {
+                (client.clone(), session_state.clone())
+            } else {
+                // we need to refresh but lost our client
+                self.update_state(
+                    OAuth2Context::NotAuthenticated {
+                        reason: Reason::Expired,
+                    },
+                    None,
+                );
+                return;
+            };
+
+        if let OAuth2Context::Authenticated(Authentication {
+            refresh_token: Some(refresh_token),
+            ..
+        }) = &self.state
+        {
+            log::debug!("Triggering refresh");
+
+            let result = client
+                .exchange_refresh_token(refresh_token.clone(), session_state)
+                .await;
+            self.update_state_from_result(result);
         }
     }
 
@@ -455,42 +375,12 @@ impl<C: Client> OAuth2Agent<C> {
         }
     }
 
-    fn refresh(&mut self) {
-        let (client, session_state) =
-            if let (Some(client), Some(session_state)) = (&self.client, &self.session_state) {
-                (client.clone(), session_state.clone())
-            } else {
-                // we need to refresh but lost our client
-                self.update_state(
-                    OAuth2Context::NotAuthenticated {
-                        reason: Reason::Expired,
-                    },
-                    None,
-                );
-                return;
-            };
-
-        if let OAuth2Context::Authenticated(Authentication {
-            refresh_token: Some(refresh_token),
-            ..
-        }) = &self.state
-        {
-            log::debug!("Triggering refresh");
-
-            let refresh_token = refresh_token.clone();
-            let link = self.link.clone();
-            spawn_local(async move {
-                match client
-                    .exchange_refresh_token(refresh_token, session_state)
-                    .await
-                {
-                    Ok((context, session_state)) => {
-                        link.send_message(Msg::Change((context, Some(session_state))))
-                    }
-                    Err(err) => link.send_message(Msg::Change((err.into(), None))),
-                }
-            })
-        }
+    fn current_url() -> Result<Url, String> {
+        let href = window().location().href().map_err(|err| {
+            err.as_string()
+                .unwrap_or_else(|| "unable to get current location".to_string())
+        })?;
+        Url::parse(&href).map_err(|err| err.to_string())
     }
 
     fn cleanup_url() {
@@ -502,11 +392,87 @@ impl<C: Client> OAuth2Agent<C> {
                 .ok();
         }
     }
+
+    async fn configure(&mut self, config: AgentConfiguration<C>) {
+        self.configured(Self::make_client(config).await).await;
+    }
+
+    fn start_login(&mut self, options: LoginOptions) -> Result<(), OAuth2Error> {
+        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+        let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+        let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
+
+        let login_context = client.make_login_context(config, redirect_url.clone())?;
+
+        SessionStorage::set(STORAGE_KEY_CSRF_TOKEN, login_context.csrf_token)
+            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
+
+        SessionStorage::set(STORAGE_KEY_LOGIN_STATE, login_context.state)
+            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
+
+        SessionStorage::set(STORAGE_KEY_REDIRECT_URL, redirect_url)
+            .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
+
+        let mut login_url = login_context.url;
+
+        login_url.query_pairs_mut().extend_pairs(options.query);
+
+        // the next call will most likely navigate away from this page
+
+        window()
+            .location()
+            .set_href(login_url.as_str())
+            .map_err(|err| {
+                OAuth2Error::StartLogin(
+                    err.as_string()
+                        .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
+                )
+            })?;
+
+        Ok(())
+    }
+
+    fn logout_opts(&mut self, options: LogoutOptions) {
+        if let Some(client) = &self.client {
+            if let Some(session_state) = self.session_state.clone() {
+                // let the client know that log out, clients may navigate to a different
+                // page
+                log::debug!("Notify client of logout");
+                client.logout(session_state, options);
+            }
+        }
+
+        // There is a bug in yew, which panics during re-rendering, which might be triggered
+        // by the next step. Doing the update later, might not trigger the issue as it might
+        // cause the application to navigate to a different page.
+        self.update_state(
+            OAuth2Context::NotAuthenticated {
+                reason: Reason::Logout,
+            },
+            None,
+        );
+    }
 }
 
-#[derive(Debug)]
-struct State {
-    code: Option<String>,
-    state: Option<String>,
-    error: Option<String>,
+impl<C> OAuth2Operations<C> for Agent<C>
+where
+    C: Client,
+{
+    fn configure(&self, config: AgentConfiguration<C>) -> Result<(), Error> {
+        self.tx
+            .try_send(Msg::Configure(config))
+            .map_err(|_| Error::NoAgent)
+    }
+
+    fn start_login_opts(&self, options: LoginOptions) -> Result<(), Error> {
+        self.tx
+            .try_send(Msg::StartLogin(options))
+            .map_err(|_| Error::NoAgent)
+    }
+
+    fn logout_opts(&self, options: LogoutOptions) -> Result<(), Error> {
+        self.tx
+            .try_send(Msg::Logout(options))
+            .map_err(|_| Error::NoAgent)
+    }
 }

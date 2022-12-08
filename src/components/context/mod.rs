@@ -1,9 +1,14 @@
 //! The main, wrapping [`OAuth2`] component
 
+mod agent;
+
+pub use agent::*;
+
 use crate::{
-    agent::{AgentConfiguration, Client, OAuth2Bridge, OAuth2Operations, Out},
+    agent::{AgentConfiguration, Client, OAuth2Operations},
     context::OAuth2Context,
 };
+use agent::Agent as AgentContext;
 use std::time::Duration;
 use yew::prelude::*;
 
@@ -42,7 +47,7 @@ impl<C: Client> PartialEq for Props<C> {
 /// All items making using of the OAuth2 or OpenID Connect context must be below this element.
 pub struct OAuth2<C: Client> {
     context: OAuth2Context,
-    agent: OAuth2Bridge<C>,
+    agent: AgentContext<C>,
     config: AgentConfiguration<C>,
 }
 
@@ -56,17 +61,15 @@ impl<C: Client> Component for OAuth2<C> {
     type Properties = Props<C>;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let mut agent = OAuth2Bridge::new(ctx.link().batch_callback(|out| match out {
-            Out::ContextUpdate(context) => vec![Msg::Context(context)],
-            _ => vec![],
-        }));
-
         let config = Self::make_config(ctx.props());
-        agent.init(config.clone());
+        let callback = ctx.link().callback(Msg::Context);
+
+        let agent = crate::agent::Agent::new(move |s| callback.emit(s));
+        let _ = agent.configure(config.clone());
 
         Self {
             context: OAuth2Context::NotInitialized,
-            agent,
+            agent: AgentContext::new(agent),
             config,
         }
     }
@@ -83,11 +86,11 @@ impl<C: Client> Component for OAuth2<C> {
         false
     }
 
-    fn changed(&mut self, ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, ctx: &Context<Self>, _: &Self::Properties) -> bool {
         let config = Self::make_config(ctx.props());
         if self.config != config {
             // only reconfigure agent when necessary
-            self.agent.configure(config.clone());
+            let _ = self.agent.configure(config.clone());
             self.config = config;
         }
 
@@ -98,7 +101,9 @@ impl<C: Client> Component for OAuth2<C> {
         html!(
             <>
                 <ContextProvider<OAuth2Context> context={self.context.clone()} >
-                    { for ctx.props().children.iter() }
+                    <ContextProvider<AgentContext<C>> context={self.agent.clone()}>
+                        { for ctx.props().children.iter() }
+                    </ContextProvider<AgentContext<C>>>
                 </ContextProvider<OAuth2Context>>
             </>
         )

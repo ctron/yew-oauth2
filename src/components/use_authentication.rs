@@ -1,7 +1,7 @@
 //! The [`UseAuthentication`] component
 
 use super::missing_context;
-use crate::context::{Authentication, OAuth2Context};
+use crate::context::{use_auth_state, Authentication, OAuth2Context};
 use std::rc::Rc;
 use yew::prelude::*;
 
@@ -15,7 +15,7 @@ pub trait UseAuthenticationProperties: Clone {
 #[derive(Clone, Debug, Properties)]
 pub struct Props<C>
 where
-    C: Component,
+    C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
 {
     pub children: ChildrenWithProps<C>,
@@ -23,7 +23,7 @@ where
 
 impl<C> PartialEq for Props<C>
 where
-    C: Component,
+    C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
 {
     fn eq(&self, other: &Self) -> bool {
@@ -66,10 +66,10 @@ where
 #[function_component(UseAuthentication)]
 pub fn use_authentication<C>(props: &Props<C>) -> Html
 where
-    C: Component,
+    C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
 {
-    let auth = use_context::<OAuth2Context>();
+    let auth = use_auth_state();
 
     html!(
         if let Some(auth) = auth {

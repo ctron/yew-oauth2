@@ -1,19 +1,21 @@
 //! Components for redirecting the user
 
 pub mod location;
-#[cfg(feature = "yew-router-nested")]
+#[cfg(feature = "yew-nested-router")]
 pub mod router;
 
 use super::missing_context;
-use crate::agent::Client;
+use crate::agent::{Client, OAuth2Operations};
+use crate::components::context::Agent;
 use crate::context::{OAuth2Context, Reason};
-use std::marker::PhantomData;
 use yew::{context::ContextHandle, prelude::*};
 
 pub trait Redirector: 'static {
     type Properties: RedirectorProperties;
 
-    fn logout(props: &Self::Properties);
+    fn new<COMP: Component>(ctx: &Context<COMP>) -> Self;
+
+    fn logout(&self, props: &Self::Properties);
 }
 
 pub trait RedirectorProperties: yew::Properties {
@@ -21,8 +23,9 @@ pub trait RedirectorProperties: yew::Properties {
 }
 
 #[derive(Debug, Clone)]
-pub enum Msg {
+pub enum Msg<C: Client> {
     Context(OAuth2Context),
+    Agent(Agent<C>),
 }
 
 /// A component which redirect the user in case the context is not authenticated.
@@ -32,8 +35,12 @@ where
     R: Redirector,
 {
     auth: Option<OAuth2Context>,
-    _handler: Option<ContextHandle<OAuth2Context>>,
-    _marker: PhantomData<(C, R)>,
+    agent: Option<Agent<C>>,
+
+    _auth_handler: Option<ContextHandle<OAuth2Context>>,
+    _agent_handler: Option<ContextHandle<Agent<C>>>,
+
+    redirector: R,
 }
 
 impl<C, R> Component for Redirect<C, R>
@@ -41,13 +48,22 @@ where
     C: Client,
     R: Redirector,
 {
-    type Message = Msg;
+    type Message = Msg<C>;
     type Properties = R::Properties;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let cb = ctx.link().callback(Msg::Context);
-        let (auth, handler) = match ctx.link().context::<OAuth2Context>(cb) {
+        let (auth, auth_handler) = match ctx
+            .link()
+            .context::<OAuth2Context>(ctx.link().callback(Msg::Context))
+        {
             Some((auth, handler)) => (Some(auth), Some(handler)),
+            None => (None, None),
+        };
+        let (agent, agent_handler) = match ctx
+            .link()
+            .context::<Agent<C>>(ctx.link().callback(Msg::Agent))
+        {
+            Some((agent, handler)) => (Some(agent), Some(handler)),
             None => (None, None),
         };
 
@@ -55,8 +71,10 @@ where
 
         let mut result = Self {
             auth: None,
-            _handler: handler,
-            _marker: Default::default(),
+            agent,
+            _auth_handler: auth_handler,
+            _agent_handler: agent_handler,
+            redirector: R::new(ctx),
         };
 
         if let Some(auth) = auth {
@@ -74,6 +92,11 @@ where
                 let changed = self.auth.as_ref() != Some(&auth);
                 self.apply_state(ctx, auth);
                 changed
+            }
+            Self::Message::Agent(agent) => {
+                self.agent = Some(agent);
+                // we never re-render based on an agent change
+                false
             }
         }
     }
@@ -111,16 +134,20 @@ where
             OAuth2Context::NotAuthenticated { reason } => match reason {
                 Reason::NewSession => {
                     // new session, then start the login
-                    super::start_login::<C>();
+                    if let Some(agent) = &mut self.agent {
+                        let _ = agent.start_login();
+                    }
                 }
                 Reason::Expired | Reason::Logout => {
                     match self.auth {
                         None | Some(OAuth2Context::NotInitialized) => {
-                            super::start_login::<C>();
+                            if let Some(agent) = &mut self.agent {
+                                let _ = agent.start_login();
+                            }
                         }
                         _ => {
                             // expired or logged out explicitly, then redirect to logout page
-                            R::logout(ctx.props());
+                            self.logout(ctx.props());
                         }
                     }
                 }
@@ -128,5 +155,9 @@ where
         }
 
         self.auth = Some(auth);
+    }
+
+    fn logout(&self, props: &R::Properties) {
+        self.redirector.logout(props);
     }
 }
