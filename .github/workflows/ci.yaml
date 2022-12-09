@@ -25,9 +25,8 @@ jobs:
 
       - name: Install Rust ${{ matrix.toolchain }}
         run: |
-          rustup toolchain install ${{ matrix.toolchain }}
+          rustup toolchain install ${{ matrix.toolchain }} --components rustfmt,clippy --target wasm32-unknown-unknown
           rustup default ${{ matrix.toolchain }}
-          rustup target add wasm32-unknown-unknown
 
       - uses: actions/cache@v3
         with:
