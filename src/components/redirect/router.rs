@@ -38,7 +38,7 @@ where
         log::debug!("ChangeRoute due to logout: {:?}", route);
 
         if let Some(router) = &self.router {
-            router.go(route);
+            router.push(route);
         }
     }
 }
