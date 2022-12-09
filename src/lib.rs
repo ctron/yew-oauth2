@@ -19,42 +19,46 @@
 //! use yew_oauth2::prelude::*;
 //! use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 //!
-//! pub struct MyApplication;
+//! #[function_component(MyApplication)]
+//! fn my_app() -> Html {
+//!   let config = Config {
+//!     client_id: "my-client".into(),
+//!     auth_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth".into(),
+//!     token_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token".into(),
+//!   };
 //!
-//! impl Component for MyApplication {
-//!   type Message = ();
-//!   type Properties = ();
+//!   html!(
+//!     <OAuth2 config={config}>
+//!       <MyApplicationMain/>
+//!     </OAuth2>
+//!   )
+//! }
 //!
-//!   fn create(ctx: &Context<Self>) -> Self {
-//!     Self
-//!   }
+//! #[function_component(MyApplicationMain)]
+//! fn my_app_main() -> Html {
+//!   let agent = use_auth_agent().expect("Must be nested inside an OAuth2 component");
 //!
-//!   fn view(&self, ctx: &Context<Self>) -> Html {
-//!     let login = ctx.link().callback_once(|_: MouseEvent| {
-//!       OAuth2Dispatcher::<Client>::new().start_login();
-//!     });
-//!     let logout = ctx.link().callback_once(|_: MouseEvent| {
-//!       OAuth2Dispatcher::<Client>::new().logout();
-//!     });
+//!   let login = {
+//!     let agent = agent.clone();
+//!     Callback::from(move |_| {
+//!       let _ = agent.start_login();
+//!     })
+//!   };
+//!   let logout = Callback::from(move |_| {
+//!     let _ = agent.logout();
+//!   });
 //!
-//!     let config = Config {
-//!       client_id: "my-client".into(),
-//!       auth_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth".into(),
-//!       token_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token".into(),
-//!     };
-//!
-//!     html!(
-//!       <OAuth2 config={config}>
-//!         <Failure><FailureMessage/></Failure>
-//!         <Authenticated>
-//!           <button onclick={logout}>{ "Logout" }</button>
-//!         </Authenticated>
-//!         <NotAuthenticated>
-//!           <button onclick={login.clone()}>{ "Login" }</button>
-//!         </NotAuthenticated>
-//!       </OAuth2>
-//!     )
-//!   }
+//!   html!(
+//!     <>
+//!       <Failure><FailureMessage/></Failure>
+//!       <Authenticated>
+//!         <button onclick={logout}>{ "Logout" }</button>
+//!       </Authenticated>
+//!       <NotAuthenticated>
+//!         <button onclick={login}>{ "Login" }</button>
+//!       </NotAuthenticated>
+//!     </>
+//!   )
 //! }
 //! ```
 

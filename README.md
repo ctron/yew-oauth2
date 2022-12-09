@@ -43,58 +43,50 @@ Also see: https://github.com/ramosbugs/openidconnect-rs/pull/58
 A quick example how to use it (see below for more complete examples):
 
 ```rust
-
+use yew::prelude::*;
 use yew_oauth2::prelude::*;
 use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 
-impl Component for MyApplication {
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let login = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>::new().start_login();
-        });
-        let logout = ctx.link().callback_once(|_: MouseEvent| {
-            OAuth2Dispatcher::<Client>::new().logout();
-        });
+#[function_component(MyApplication)]
+fn my_app() -> Html {
+  let config = Config {
+    client_id: "my-client".into(),
+    auth_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth".into(),
+    token_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token".into(),
+  };
 
-        html!(
-            <OAuth2
-                config={
-                    Config {
-                        client_id: "my-client".into(),
-                        auth_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth".into(),
-                        token_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token".into(),
-                    }
-                }
-                >
-                <Failure><FailureMessage/></Failure>
-                <Authenticated>
-                    <p> <button onclick={logout}>{ "Logout" }</button> </p>
-                    <ul>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Index}> { "Index" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Component}> { "Component" } </RouterAnchor<AppRoute>></li>
-                        <li><RouterAnchor<AppRoute> route={AppRoute::Function}> { "Function" } </RouterAnchor<AppRoute>></li>
-                    </ul>
-                    <Router<AppRoute>
-                        render = { Router::render(|switch: AppRoute| { match switch {
-                                AppRoute::Index => html!(<p> { "You are logged in"} </p>),
-                                AppRoute::Component => html!(<ViewAuthInfoComponent />),
-                                AppRoute::Function => html!(<ViewAuthInfoFunctional />),
-                        }})}
-                    />
-                </Authenticated>
-                <NotAuthenticated>
-                    <Router<AppRoute>
-                        render = { Router::render(move |switch: AppRoute| { match switch {
-                                AppRoute::Index => html!(
-                                    <p> { "You need to log in" } <button onclick={login.clone()}>{ "Login" }</button> </p>
-                                ),
-                                _ => html!(<LocationRedirect logout_href="/" />),
-                        }})}
-                    />
-                </NotAuthenticated>
-            </OAuth2>
-        )
-    }
+  html!(
+    <OAuth2 config={config}>
+      <MyApplicationMain/>
+    </OAuth2>
+  )
+}
+
+#[function_component(MyApplicationMain)]
+fn my_app_main() -> Html {
+  let agent = use_auth_agent().expect("Must be nested inside an OAuth2 component");
+
+  let login = {
+    let agent = agent.clone();
+    Callback::from(move |_| {
+      let _ = agent.start_login();
+    })
+  };
+  let logout = Callback::from(move |_| {
+    let _ = agent.logout();
+  });
+
+  html!(
+    <>
+      <Failure><FailureMessage/></Failure>
+      <Authenticated>
+        <button onclick={logout}>{ "Logout" }</button>
+      </Authenticated>
+      <NotAuthenticated>
+        <button onclick={login}>{ "Login" }</button>
+      </NotAuthenticated>
+    </>
+  )
 }
 ```
 
