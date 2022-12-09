@@ -22,12 +22,12 @@ jobs:
     steps:
 
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          target: wasm32-unknown-unknown
-          override: true
-          components: rustfmt, clippy
+
+      - name: Install Rust ${{ matrix.toolchain }}
+        run: |
+          rustup toolchain install ${{ matrix.toolchain }}
+          rustup default ${{ matrix.toolchain }}
+          rustup target add wasm32-unknown-unknown
 
       - uses: actions/cache@v3
         with:
@@ -40,30 +40,21 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: |
+          cargo fmt --all -- --check
 
       - name: Install cargo check-all
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-all-features --force
+        run: |
+          cargo install cargo-all-features --force
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check-all-features
-          args: --target wasm32-unknown-unknown
+        run: |
+          cargo check-all-features --target wasm32-unknown-unknown
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test-all-features
+        run: |
+          cargo test-all-features
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --target wasm32-unknown-unknown -- -D warnings
+        run: |
+          cargo clippy --target wasm32-unknown-unknown -- -D warnings
