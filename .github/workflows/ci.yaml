@@ -16,8 +16,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # we need 1.58 as it has format strings
-          - 1.58
+          # minimum version for Yew
+          - 1.60
 
     steps:
 
