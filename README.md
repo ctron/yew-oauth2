@@ -7,13 +7,13 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.4"
+yew-oauth2 = "0.5"
 ```
 
 By default, the `router` integration is disabled, you can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.4", features = ["router"] }
+yew-oauth2 = { version = "0.5", features = ["router"] }
 ```
 
 ## OpenID Connect
