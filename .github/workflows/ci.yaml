@@ -56,3 +56,32 @@ jobs:
       - name: Run cargo clippy
         run: |
           cargo clippy --target wasm32-unknown-unknown -- -D warnings
+
+  examples:
+
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-examples-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Check (yew-oauth2-example)
+        run: |
+          cd yew-oauth2-example
+          cargo check
+          cargo check --features openid
+
+      - name: Check (yew-oauth2-redirect-example)
+        run: |
+          cd yew-oauth2-redirect-example
+          cargo check
+          cargo check --features openid
