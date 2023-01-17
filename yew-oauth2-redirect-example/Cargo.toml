@@ -22,4 +22,4 @@ default = ["openid"]
 openid = ["openidconnect", "yew-oauth2/openid"]
 
 [patch.crates-io]
-openidconnect = { git = "https://github.com/ctron/openidconnect-rs", rev = "6ca4a9ab9de35600c44a8b830693137d4769edf4" }
+#openidconnect = { git = "https://github.com/ctron/openidconnect-rs", rev = "6ca4a9ab9de35600c44a8b830693137d4769edf4" }

@@ -18,25 +18,11 @@ yew-oauth2 = { version = "0.5", features = ["router"] }
 
 ## OpenID Connect
 
-Starting with version `0.2.0`, this crate also supports Open ID Connect. That should be just an extension on top
-of OAuth2, but the reality is more complicated.
+Starting with version `0.2.0`, this crate also supports Open ID Connect. This used to be a bit complicated due to the
+lacking support of WASM for [openidconnect-rs](https://github.com/ramosbugs/openidconnect-rs).
 
-In order to use this, a different crate is required in the background. That crate also has a dependency on `ring`, which
-uses a lot of C code, which is not available on WASM.
-
-That is why this functionality is gated by the feature `openid`. When you enable this feature, for the time being, you
-will also need to use the patched version of `openidconnect`, by adding the following to your `Cargo.toml`:
-
-```toml
-[dependencies]
-# YES, you need to add this additionally to your application!
-openidconnect = { version = "2.2", default-features = false, features = ["reqwest", "rustls-tls", "rustcrypto"] }
-
-[patch.crates-io]
-openidconnect = { git = "https://github.com/ctron/openidconnect-rs", rev = "6ca4a9ab9de35600c44a8b830693137d4769edf4" }
-```
-
-Also see: https://github.com/ramosbugs/openidconnect-rs/pull/58
+Starting with version `0.6.0` (not released yet), it is possible to use `openidconnect-rs` version 3, which has this issue solved! The old
+patch is no longer required.
 
 ## Examples
 
