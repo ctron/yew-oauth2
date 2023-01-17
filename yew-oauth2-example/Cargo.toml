@@ -16,11 +16,11 @@ wasm-logger = "0.2"
 yew = { version = "0.20", features = ["csr"] }
 yew-nested-router = "0.1.0"
 
-openidconnect = { version = "2.2", optional = true, default-features = false, features = ["reqwest", "rustls-tls", "rustcrypto"] }
+openidconnect = { version = "3.0.0-alpha.1", optional = true }
 
 [features]
 default = ["openid"]
 openid = ["openidconnect", "yew-oauth2/openid"]
 
 [patch.crates-io]
-openidconnect = { git = "https://github.com/ctron/openidconnect-rs", rev = "6ca4a9ab9de35600c44a8b830693137d4769edf4" }
+openidconnect = { git = "https://github.com/ramosbugs/openidconnect-rs", rev = "64be3c7636bc6f745a9b33f0702950bbacca318c" }
