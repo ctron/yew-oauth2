@@ -90,6 +90,7 @@ where
 pub struct InnerConfig {
     scopes: Vec<String>,
     grace_period: Duration,
+    audience: Option<String>,
 }
 
 impl<C> InnerAgent<C>
@@ -228,6 +229,7 @@ where
         let inner = InnerConfig {
             scopes: config.scopes,
             grace_period: config.grace_period,
+            audience: config.audience,
         };
 
         Ok((client, inner))

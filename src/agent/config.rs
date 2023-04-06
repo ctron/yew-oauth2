@@ -6,6 +6,7 @@ pub struct AgentConfiguration<C: Client> {
     pub config: C::Configuration,
     pub scopes: Vec<String>,
     pub grace_period: Duration,
+    pub audience: Option<String>,
 }
 
 impl<C: Client> PartialEq for AgentConfiguration<C> {

@@ -138,6 +138,10 @@ impl Client for OpenIdClient {
             req = req.add_scope(Scope::new(scope.clone()));
         }
 
+        if let Some(audience) = &config.audience {
+            req = req.add_extra_param("audience".to_string(), audience);
+        }
+
         let (url, state, nonce) = req.set_pkce_challenge(pkce_challenge).url();
 
         Ok(LoginContext {
