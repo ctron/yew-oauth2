@@ -28,6 +28,9 @@ pub struct Props<C: Client> {
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
 
+    // the audience to be associated to the access tokens inside this context
+    pub audience: Option<String>,
+
     /// Children which will have access to the [`OAuth2Context`].
     #[prop_or_default]
     pub children: Children,
@@ -116,6 +119,7 @@ impl<C: Client> OAuth2<C> {
             config: props.config.clone(),
             scopes: props.scopes.clone(),
             grace_period: props.grace_period,
+            audience: props.audience.clone(),
         }
     }
 }

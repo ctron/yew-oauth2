@@ -79,7 +79,7 @@ impl Client for OAuth2Client {
 
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-        let (url, state) = client
+        let mut req = client
             .authorize_url(CsrfToken::new_random)
             .add_scopes(
                 config
@@ -88,8 +88,13 @@ impl Client for OAuth2Client {
                     .map(|s| Scope::new(s.to_string()))
                     .collect::<Vec<_>>(),
             )
-            .set_pkce_challenge(pkce_challenge)
-            .url();
+            .set_pkce_challenge(pkce_challenge);
+
+        if let Some(audience) = &config.audience {
+            req = req.add_extra_param("audience".to_string(), audience.clone())
+        }
+
+        let (url, state) = req.url();
 
         Ok(LoginContext {
             url,
