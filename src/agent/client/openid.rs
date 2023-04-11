@@ -1,8 +1,7 @@
-use crate::agent::LogoutOptions;
 use crate::{
     agent::{
         client::{expires, Client, LoginContext},
-        InnerConfig, OAuth2Error,
+        InnerConfig, LogoutOptions, OAuth2Error,
     },
     config::openid,
     context::{Authentication, OAuth2Context},
