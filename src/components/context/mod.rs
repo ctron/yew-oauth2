@@ -28,7 +28,8 @@ pub struct Props<C: Client> {
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
 
-    // the audience to be associated to the access tokens inside this context
+    // The audience to be associated to the access tokens inside this context
+    #[prop_or_default]
     pub audience: Option<String>,
 
     /// Children which will have access to the [`OAuth2Context`].
