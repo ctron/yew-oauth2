@@ -1,5 +1,6 @@
 [package]
 name = "yew-oauth2"
+# This is still -alpha due to the dependency on the openidconnect crate, which is alpha too
 version = "0.6.0-alpha.2"
 authors = ["Jens Reimann <jreimann@redhat.com>"]
 edition = "2021"
