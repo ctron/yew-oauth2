@@ -21,8 +21,8 @@ yew-oauth2 = { version = "0.5", features = ["router"] }
 Starting with version `0.2.0`, this crate also supports Open ID Connect. This used to be a bit complicated due to the
 lacking support of WASM for [openidconnect-rs](https://github.com/ramosbugs/openidconnect-rs).
 
-Starting with version `0.6.0-alpha.1`, it is possible to use `openidconnect-rs` version 3, which has this issue solved! The old
-patch is no longer required.
+Starting with version `0.6.0-alpha.1`, it is possible to use `openidconnect-rs` version 3, which has this issue solved!
+The old patch is no longer required.
 
 ## Examples
 
