@@ -1,4 +1,4 @@
-//! Redirect by pushing a new [`yew_router_nested::route::Route`].
+//! Redirect by pushing a new [`yew_nested_router::prelude::Target`].
 
 use super::{Redirect, Redirector, RedirectorProperties};
 use yew::prelude::*;
