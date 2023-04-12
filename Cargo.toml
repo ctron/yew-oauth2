@@ -36,7 +36,9 @@ openidconnect = { version = "3.0.0-alpha.1", optional = true }
 yew-nested-router = { version = "0.2", optional = true }
 
 [features]
+# Enable for OpenID Connect support
 router = ["yew-nested-router"]
+# Enable for Yew nested router support
 openid = ["openidconnect"]
 
 [package.metadata.docs.rs]
