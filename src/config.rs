@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Configuration for OpenID Connect
 pub mod openid {
     use super::*;
 
@@ -31,6 +32,7 @@ pub mod openid {
     }
 }
 
+/// Configuration for OAuth2
 pub mod oauth2 {
     use super::*;
 
