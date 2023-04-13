@@ -7,22 +7,22 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.5"
+yew-oauth2 = "0.6"
 ```
 
 By default, the `router` integration is disabled, you can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.5", features = ["router"] }
+yew-oauth2 = { version = "0.6", features = ["router"] }
 ```
 
 ## OpenID Connect
 
-Starting with version `0.2.0`, this crate also supports Open ID Connect. This used to be a bit complicated due to the
-lacking support of WASM for [openidconnect-rs](https://github.com/ramosbugs/openidconnect-rs).
+OpenID Connect requires an additional dependency and can be enabled using the feature `openid`.
 
-Starting with version `0.6.0-alpha.1`, it is possible to use `openidconnect-rs` version 3, which has this issue solved!
-The old patch is no longer required.
+Starting with version `0.6.0-alpha.1`, it is possible to use `openidconnect-rs` version 3, which is the first version
+supporting WebAssembly targets without patching. However, for the moment, only an alpha version of `openidconnect-rs` 3
+is released.
 
 ## Examples
 
@@ -119,5 +119,6 @@ trunk serve
 
 And navigate your browser to [http://localhost:8080](http://localhost:8080).
 
-**NOTE:** It is important to use `http://localhost:8080` instead of e.g. `http://127.0.0.1:8080`, as Keycloak is configured by default to use `http://localhost:*` as a valid redirect URL when in dev-mode. Otherwise, you will get
+**NOTE:** It is important to use `http://localhost:8080` instead of e.g. `http://127.0.0.1:8080`, as Keycloak is
+configured by default to use `http://localhost:*` as a valid redirect URL when in dev-mode. Otherwise, you will get
 an "invalid redirect" error from Keycloak.
