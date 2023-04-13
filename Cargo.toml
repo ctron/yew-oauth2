@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "OAuth2 components for Yew"
 repository = "https://github.com/ctron/yew-oauth2"
 categories = ["wasm", "web-programming", "gui"]
-keywords = ["yew", "oauth2", "web", "html"]
+keywords = ["yew", "oauth2", "oidc", "web", "html"]
 readme = "README.md"
 rust-version = "1.60"
 
