@@ -20,10 +20,6 @@ yew-oauth2 = { version = "0.6", features = ["router"] }
 
 OpenID Connect requires an additional dependency and can be enabled using the feature `openid`.
 
-Starting with version `0.6.0-alpha.1`, it is possible to use `openidconnect-rs` version 3, which is the first version
-supporting WebAssembly targets without patching. However, for the moment, only an alpha version of `openidconnect-rs` 3
-is released.
-
 ## Examples
 
 A quick example how to use it (see below for more complete examples):
