@@ -4,6 +4,7 @@ mod agent;
 
 pub use agent::*;
 
+use crate::context::LatestAccessToken;
 use crate::{
     agent::{AgentConfiguration, Client, OAuth2Operations},
     context::OAuth2Context,
@@ -51,6 +52,7 @@ impl<C: Client> PartialEq for Props<C> {
 /// All items making using of the OAuth2 or OpenID Connect context must be below this element.
 pub struct OAuth2<C: Client> {
     context: OAuth2Context,
+    latest_access_token: LatestAccessToken,
     agent: AgentContext<C>,
     config: AgentConfiguration<C>,
 }
@@ -73,6 +75,9 @@ impl<C: Client> Component for OAuth2<C> {
 
         Self {
             context: OAuth2Context::NotInitialized,
+            latest_access_token: LatestAccessToken {
+                access_token: Default::default(),
+            },
             agent: AgentContext::new(agent),
             config,
         }
@@ -82,6 +87,8 @@ impl<C: Client> Component for OAuth2<C> {
         match msg {
             Self::Message::Context(context) => {
                 if self.context != context {
+                    self.latest_access_token
+                        .set_access_token(context.access_token());
                     self.context = context;
                     return true;
                 }
@@ -106,7 +113,9 @@ impl<C: Client> Component for OAuth2<C> {
             <>
                 <ContextProvider<OAuth2Context> context={self.context.clone()} >
                     <ContextProvider<AgentContext<C>> context={self.agent.clone()}>
-                        { for ctx.props().children.iter() }
+                        <ContextProvider<LatestAccessToken> context={self.latest_access_token.clone()}>
+                            { for ctx.props().children.iter() }
+                        </ContextProvider<LatestAccessToken>>
                     </ContextProvider<AgentContext<C>>>
                 </ContextProvider<OAuth2Context>>
             </>

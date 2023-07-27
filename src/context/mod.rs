@@ -1,6 +1,9 @@
 //! The Authentication Context
 
 mod utils;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 pub use utils::*;
 
 // re-export from there to keep API stable
@@ -22,7 +25,7 @@ pub struct Authentication {
     pub refresh_token: Option<String>,
     /// OpenID claims
     #[cfg(feature = "openid")]
-    pub claims: Option<std::rc::Rc<Claims>>,
+    pub claims: Option<Rc<Claims>>,
     /// Expiration timestamp in seconds
     pub expires: Option<u64>,
 }
@@ -78,4 +81,28 @@ pub enum Reason {
     Expired,
     /// Because the user chose to log out.
     Logout,
+}
+
+#[derive(Clone)]
+pub struct LatestAccessToken {
+    pub(crate) access_token: Rc<RefCell<Option<String>>>,
+}
+
+impl PartialEq for LatestAccessToken {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.access_token, &other.access_token)
+    }
+}
+
+impl LatestAccessToken {
+    pub fn access_token(&self) -> Option<String> {
+        match self.access_token.as_ref().try_borrow() {
+            Ok(token) => (*token).clone(),
+            Err(_) => None,
+        }
+    }
+
+    pub(crate) fn set_access_token(&self, access_token: Option<impl Into<String>>) {
+        *self.access_token.borrow_mut() = access_token.map(|s| s.into());
+    }
 }

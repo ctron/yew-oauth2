@@ -1,4 +1,4 @@
-use crate::prelude::OAuth2Context;
+use crate::{context::LatestAccessToken, prelude::OAuth2Context};
 use yew::prelude::*;
 
 #[cfg(feature = "openid")]
@@ -23,5 +23,11 @@ pub mod oauth2 {
 /// Get the authentication state.
 #[hook]
 pub fn use_auth_state() -> Option<OAuth2Context> {
+    use_context()
+}
+
+/// Get a handle to retrieve the latest access token
+#[hook]
+pub fn use_latest_access_token() -> Option<LatestAccessToken> {
     use_context()
 }

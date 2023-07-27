@@ -12,6 +12,7 @@ use yew_oauth2::openid::*;
 pub enum AppRoute {
     Component,
     Function,
+    UseLatestToken,
     UseAuthentication,
     #[cfg(feature = "openid")]
     Identity,
@@ -61,6 +62,7 @@ pub fn content() -> Html {
                         <li><Link<AppRoute> target={AppRoute::Component}> { "Component" } </Link<AppRoute>></li>
                         <li><Link<AppRoute> target={AppRoute::Function}> { "Function" } </Link<AppRoute>></li>
                         <li><Link<AppRoute> target={AppRoute::UseAuthentication}> { "Use" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> target={AppRoute::UseLatestToken}> { "Latest Token" } </Link<AppRoute>></li>
                         { openid_routes }
                     </ul>
                     <Expiration/>
@@ -68,6 +70,7 @@ pub fn content() -> Html {
                         AppRoute::Index => html!(<p> { "You are logged in"} </p>),
                         AppRoute::Component => html!(<ViewAuthInfoComponent />),
                         AppRoute::Function => html!(<ViewAuthInfoFunctional />),
+                        AppRoute::UseLatestToken => html!(<UseLatestToken/>),
                         AppRoute::UseAuthentication => html!(
                             <UseAuthentication<ViewUseAuth>>
                                 <ViewUseAuth/>
