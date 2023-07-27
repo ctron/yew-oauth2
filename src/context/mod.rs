@@ -83,6 +83,7 @@ pub enum Reason {
     Logout,
 }
 
+/// A handle to access the latest access token.
 #[derive(Clone)]
 pub struct LatestAccessToken {
     pub(crate) access_token: Rc<RefCell<Option<String>>>,
@@ -95,6 +96,7 @@ impl PartialEq for LatestAccessToken {
 }
 
 impl LatestAccessToken {
+    /// The latest access token, if there is any.
     pub fn access_token(&self) -> Option<String> {
         match self.access_token.as_ref().try_borrow() {
             Ok(token) => (*token).clone(),
