@@ -16,8 +16,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # minimum version: because of rfc6979
-          - "1.61"
+          # minimum version: because of "der"
+          - "1.65"
 
     steps:
 
