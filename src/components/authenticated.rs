@@ -6,14 +6,14 @@ use yew::prelude::*;
 
 /// Properties for the [`Authenticated`] component
 #[derive(Clone, Debug, PartialEq, Properties)]
-pub struct Props {
+pub struct AuthenticatedProperties {
     /// The children to show then the context is authenticated.
     pub children: Children,
 }
 
 /// A Yew component, rendering when the agent is authenticated.
 #[function_component(Authenticated)]
-pub fn authenticated(props: &Props) -> Html {
+pub fn authenticated(props: &AuthenticatedProperties) -> Html {
     let auth = use_context::<OAuth2Context>();
 
     html!(

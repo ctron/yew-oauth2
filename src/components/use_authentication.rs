@@ -13,7 +13,7 @@ pub trait UseAuthenticationProperties: Clone {
 
 /// Properties for the [`UseAuthentication`] component
 #[derive(Clone, Debug, Properties)]
-pub struct Props<C>
+pub struct UseAuthenticationComponentProperties<C>
 where
     C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
@@ -21,7 +21,7 @@ where
     pub children: ChildrenWithProps<C>,
 }
 
-impl<C> PartialEq for Props<C>
+impl<C> PartialEq for UseAuthenticationComponentProperties<C>
 where
     C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
@@ -64,7 +64,7 @@ where
 /// }
 /// ```
 #[function_component(UseAuthentication)]
-pub fn use_authentication<C>(props: &Props<C>) -> Html
+pub fn use_authentication<C>(props: &UseAuthenticationComponentProperties<C>) -> Html
 where
     C: BaseComponent,
     C::Properties: UseAuthenticationProperties,
