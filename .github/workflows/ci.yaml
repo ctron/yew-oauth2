@@ -16,8 +16,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # minimum version for Yew
-          - "1.60"
+          # minimum version: because of rfc6979
+          - "1.61"
 
     steps:
 
