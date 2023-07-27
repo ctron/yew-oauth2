@@ -66,6 +66,7 @@ pub mod agent;
 pub mod components;
 pub mod config;
 pub mod context;
+pub mod hook;
 pub mod prelude;
 
 #[cfg(feature = "openid")]

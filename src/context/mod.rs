@@ -3,7 +3,8 @@
 mod utils;
 pub use utils::*;
 
-use yew::prelude::*;
+// re-export from there to keep API stable
+pub use crate::hook::use_auth_state;
 
 #[cfg(feature = "openid")]
 pub type Claims = openidconnect::IdTokenClaims<
@@ -66,12 +67,6 @@ impl OAuth2Context {
         self.authentication()
             .and_then(|auth| auth.claims.as_ref().map(|claims| claims.as_ref()))
     }
-}
-
-/// Get the authentication state.
-#[hook]
-pub fn use_auth_state() -> Option<OAuth2Context> {
-    use_context()
 }
 
 /// The reason why the context is un-authenticated.
