@@ -16,8 +16,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # minimum version: because of "der"
-          - "1.65"
+          # minimum version: because of "clap_lex"
+          - "1.70"
 
     steps:
 
