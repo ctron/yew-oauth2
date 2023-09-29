@@ -23,14 +23,14 @@ impl Redirector for LocationRedirector {
 #[derive(Clone, Debug, PartialEq, Properties)]
 pub struct LocationProps {
     #[prop_or_default]
-    pub children: Option<Children>,
+    pub children: Children,
 
     pub logout_href: String,
 }
 
 impl RedirectorProperties for LocationProps {
-    fn children(&self) -> Option<&Children> {
-        self.children.as_ref()
+    fn children(&self) -> &Children {
+        &self.children
     }
 }
 

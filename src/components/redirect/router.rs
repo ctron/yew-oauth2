@@ -49,7 +49,7 @@ where
     R: Target + 'static,
 {
     #[prop_or_default]
-    pub children: Option<Children>,
+    pub children: Children,
     pub logout: R,
 }
 
@@ -57,8 +57,8 @@ impl<R> RedirectorProperties for RouterProps<R>
 where
     R: Target + 'static,
 {
-    fn children(&self) -> Option<&Children> {
-        self.children.as_ref()
+    fn children(&self) -> &Children {
+        &self.children
     }
 }
 
