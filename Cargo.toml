@@ -25,14 +25,14 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-yew = "0.20"
+yew = "0.21.0"
 
 web-sys = { version = "0.3", features = [
     "Window",
 ] }
 
 openidconnect = { version = "3.0", optional = true }
-yew-nested-router = { version = ">=0.2, <0.4", optional = true }
+yew-nested-router = { git = "https://github.com/mh84/yew-nested-router", rev = "de83197b27eef473afcf8a77776cd3bd245e2d56", optional = true }
 
 [features]
 # Enable for Yew nested router support
