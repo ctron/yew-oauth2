@@ -41,9 +41,13 @@ jobs:
         run: |
           cargo fmt --all -- --check
 
-      - name: Install cargo check-all
+      - name: Install binstall
         run: |
-          cargo install cargo-all-features --force
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Install cargo-all-features
+        run: |
+          cargo binstall -y cargo-all-features
 
       - name: Run cargo check
         run: |
