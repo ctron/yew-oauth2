@@ -421,7 +421,9 @@ where
 
         login_url.query_pairs_mut().extend_pairs(options.query);
         if let Some(options) = &config.options {
-            login_url.query_pairs_mut().extend_pairs(options.query.clone());
+            login_url
+                .query_pairs_mut()
+                .extend_pairs(options.query.clone());
         }
 
         // the next call will most likely navigate away from this page
