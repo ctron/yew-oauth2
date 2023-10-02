@@ -5,6 +5,7 @@ mod agent;
 pub use agent::*;
 
 use crate::context::LatestAccessToken;
+use crate::prelude::LoginOptions;
 use crate::{
     agent::{AgentConfiguration, Client, OAuth2Operations},
     context::OAuth2Context,
@@ -36,6 +37,10 @@ pub struct Props<C: Client> {
     /// Children which will have access to the [`OAuth2Context`].
     #[prop_or_default]
     pub children: Children,
+
+    /// Default [`LoginOptions`] that will be used for every request
+    #[prop_or_default]
+    pub options: Option<LoginOptions>,
 }
 
 impl<C: Client> PartialEq for Props<C> {
@@ -130,6 +135,7 @@ impl<C: Client> OAuth2<C> {
             scopes: props.scopes.clone(),
             grace_period: props.grace_period,
             audience: props.audience.clone(),
+            options: props.options.clone(),
         }
     }
 }

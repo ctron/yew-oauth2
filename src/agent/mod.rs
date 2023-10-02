@@ -91,6 +91,7 @@ pub struct InnerConfig {
     scopes: Vec<String>,
     grace_period: Duration,
     audience: Option<String>,
+    options: Option<LoginOptions>,
 }
 
 impl<C> InnerAgent<C>
@@ -230,6 +231,7 @@ where
             scopes: config.scopes,
             grace_period: config.grace_period,
             audience: config.audience,
+            options: config.options,
         };
 
         Ok((client, inner))
@@ -418,6 +420,9 @@ where
         let mut login_url = login_context.url;
 
         login_url.query_pairs_mut().extend_pairs(options.query);
+        if let Some(options) = &config.options {
+            login_url.query_pairs_mut().extend_pairs(options.query.clone());
+        }
 
         // the next call will most likely navigate away from this page
 
