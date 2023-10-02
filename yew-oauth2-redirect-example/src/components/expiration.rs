@@ -1,5 +1,6 @@
-use chrono::{Duration, TimeZone, Utc};
 use gloo_timers::callback::Interval;
+use std::time::Duration;
+use time::OffsetDateTime;
 use yew::{context::ContextHandle, prelude::*};
 use yew_oauth2::prelude::*;
 
@@ -53,16 +54,15 @@ impl Component for Expiration {
             ..
         })) = self.auth
         {
-            let expires = Utc.timestamp(expires as i64, 0);
+            if let Ok(expires) = OffsetDateTime::from_unix_timestamp(expires as i64) {
+                let rem = expires - OffsetDateTime::now_utc();
+                let rem = Duration::from_secs(rem.whole_seconds() as u64);
+                let rem = humantime::Duration::from(rem);
 
-            let rem = expires - Utc::now();
-            let rem = Duration::seconds(rem.num_seconds());
-            let rem = rem
-                .to_std()
-                .map(|s| format!("{}", humantime::Duration::from(s)))
-                .unwrap_or_else(|_| "??".into());
-
-            html!(<div> { "Expires: "} { expires } { format!(" (remaining: {})", rem) } </div>)
+                html!(<div> { "Expires: "} { expires } { format!(" (remaining: {})", rem) } </div>)
+            } else {
+                html!(<div> {"Failed to convert unix timestamp"} </div>)
+            }
         } else {
             html!()
         }

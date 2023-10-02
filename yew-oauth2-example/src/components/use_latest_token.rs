@@ -7,12 +7,12 @@ pub fn use_latest_token() -> Html {
 
     let node_ref = use_node_ref();
     let onclick = use_callback(
+        (node_ref.clone(), latest_token),
         |_, (node_ref, latest_token)| {
             if let Some(node) = node_ref.get() {
                 node.set_text_content(Some(&format!("{:?}", latest_token.access_token())));
             }
         },
-        (node_ref.clone(), latest_token),
     );
 
     html!(
