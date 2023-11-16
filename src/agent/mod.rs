@@ -28,6 +28,25 @@ use yew::Callback;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LoginOptions {
     pub query: HashMap<String, String>,
+    pub redirect_url: Option<Url>,
+}
+
+impl LoginOptions {
+    pub fn new() -> Self {
+        LoginOptions::default()
+    }
+    pub fn with_query(mut self, query: HashMap<String, String>) -> Self {
+        self.query = query;
+        self
+    }
+    pub fn with_extended_query(mut self, query: HashMap<String, String>) -> Self {
+        self.query.extend(query);
+        self
+    }
+    pub fn with_redirect_url(mut self, redirect_url: Url) -> Self {
+        self.redirect_url = Some(redirect_url);
+        self
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -404,7 +423,9 @@ where
     fn start_login(&mut self, options: LoginOptions) -> Result<(), OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-        let redirect_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
+        let redirect_url = options
+            .redirect_url
+            .unwrap_or(Self::current_url().map_err(OAuth2Error::StartLogin)?);
 
         let login_context = client.make_login_context(config, redirect_url.clone())?;
 
