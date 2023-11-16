@@ -28,6 +28,7 @@ use yew::Callback;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LoginOptions {
     pub query: HashMap<String, String>,
+    /// Defines the redirect URL. If thsi field is empty, the current URL is used as a redirect URL.
     pub redirect_url: Option<Url>,
 }
 
