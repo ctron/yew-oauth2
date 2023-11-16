@@ -7,7 +7,7 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.7"
+yew-oauth2 = "0.8"
 ```
 
 By default, the `router` integration is disabled, you can enable it using:
