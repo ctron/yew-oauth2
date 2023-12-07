@@ -13,7 +13,7 @@ yew-oauth2 = "0.8"
 By default, the `router` integration is disabled, you can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.7", features = ["router"] }
+yew-oauth2 = { version = "0.8", features = ["router"] }
 ```
 
 ## OpenID Connect
