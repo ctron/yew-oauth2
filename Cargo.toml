@@ -22,6 +22,7 @@ num-traits = "0.2"
 oauth2 = "4"
 reqwest = "0.11"
 serde = { version = "1", features = ["derive"] }
+time = { version = "0.3", features = ["wasm-bindgen"] }
 tokio = { version = "1", features = ["sync"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
