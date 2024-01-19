@@ -433,7 +433,14 @@ where
     fn start_login(&mut self, options: LoginOptions) -> Result<(), OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-        let redirect_url = match options.redirect_url {
+
+        // take the parameter value first, then the agent configured value, then fall back to the default
+        let redirect_url = match options.redirect_url.or_else(|| {
+            config
+                .options
+                .as_ref()
+                .and_then(|opts| opts.redirect_url.clone())
+        }) {
             Some(redirect_url) => redirect_url,
             None => Self::current_url().map_err(OAuth2Error::StartLogin)?,
         };
