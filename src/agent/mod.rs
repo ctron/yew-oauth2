@@ -460,6 +460,8 @@ where
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
 
+        let post_login_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
+
         // take the parameter value first, then the agent configured value, then fall back to the default
         let redirect_url = match options.redirect_url.or_else(|| {
             config
@@ -470,6 +472,11 @@ where
             Some(redirect_url) => redirect_url,
             None => Self::current_url().map_err(OAuth2Error::StartLogin)?,
         };
+
+        if redirect_url != post_login_url {
+            SessionStorage::set(STORAGE_KEY_POST_LOGIN_URL, post_login_url)
+                .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
+        }
 
         let login_context = client.make_login_context(config, redirect_url.clone())?;
 
