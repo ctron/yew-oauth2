@@ -12,6 +12,7 @@ pub use error::*;
 pub use ops::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
+use gloo_storage::errors::StorageError;
 use gloo_storage::{SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
@@ -37,11 +38,6 @@ pub struct LoginOptions {
     ///
     ///Set this flag to true to store the current url for later retrieval in the session
     pub keep_current_url_in_session: Option<bool>,
-    /// The session key for the current url
-    ///
-    ///Use this key to set the session store key for the current url
-    ///If none is specified then "ctron/oauth2/currentUrl" is used
-    pub keep_current_url_session_key: Option<String>,
 }
 
 impl LoginOptions {
@@ -67,9 +63,8 @@ impl LoginOptions {
         self
     }
 
-    pub fn with_store_current_url_in_session(mut self, key: Option<String>) -> Self {
+    pub fn with_store_current_url_in_session(mut self) -> Self {
         self.keep_current_url_in_session = Some(true);
-        self.keep_current_url_session_key = key;
         self
     }
 }
@@ -454,10 +449,7 @@ where
         if let Some(options) = config.options.clone() {
             if options.keep_current_url_in_session.unwrap_or_default() {
                 let current_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
-                let key = options
-                    .keep_current_url_session_key
-                    .unwrap_or(STORAGE_KEY_CURRENT_URL.to_string());
-                SessionStorage::set(key, current_url)
+                SessionStorage::set(STORAGE_KEY_CURRENT_URL.to_string(), current_url)
                     .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
             }
         }
