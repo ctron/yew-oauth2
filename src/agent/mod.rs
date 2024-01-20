@@ -33,6 +33,15 @@ pub struct LoginOptions {
     ///
     /// If this field is empty, the current URL is used as a redirect URL.
     pub redirect_url: Option<Url>,
+    /// Keep the current url in the session
+    ///
+    ///Set this flag to true to store the current url for later retrieval in the session
+    pub keep_current_url_in_session: Option<bool>,
+    /// The session key for the current url
+    ///
+    ///Use this key to set the session store key for the current url
+    ///If none is specified then "ctron/oauth2/currentUrl" is used
+    pub keep_current_url_session_key: Option<String>,
 }
 
 impl LoginOptions {
@@ -55,6 +64,12 @@ impl LoginOptions {
 
     pub fn with_redirect_url(mut self, redirect_url: Url) -> Self {
         self.redirect_url = Some(redirect_url);
+        self
+    }
+
+    pub fn with_store_current_url_in_session(mut self, key: Option<String>) -> Self {
+        self.keep_current_url_in_session = Some(true);
+        self.keep_current_url_session_key = key;
         self
     }
 }
@@ -433,6 +448,19 @@ where
     fn start_login(&mut self, options: LoginOptions) -> Result<(), OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+
+        //If specified in the login options will store the current url in the session for retrieval
+        // when coming back from IDP
+        if let Some(options) = config.options.clone() {
+            if options.keep_current_url_in_session.unwrap_or_default() {
+                let current_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
+                let key = options
+                    .keep_current_url_session_key
+                    .unwrap_or(STORAGE_KEY_CURRENT_URL.to_string());
+                SessionStorage::set(key, current_url)
+                    .map_err(|err| OAuth2Error::StartLogin(err.to_string()))?;
+            }
+        }
 
         // take the parameter value first, then the agent configured value, then fall back to the default
         let redirect_url = match options.redirect_url.or_else(|| {
