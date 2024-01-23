@@ -39,6 +39,7 @@ pub struct OpenIdClient {
     end_session_url: Option<Url>,
     after_logout_url: Option<String>,
     post_logout_redirect_name: Option<String>,
+    valid_audiences: Vec<String>,
 }
 
 /// Additional metadata read from the discovery endpoint
@@ -109,15 +110,13 @@ impl Client for OpenIdClient {
             .additional
             .valid_audiences
             .unwrap_or(vec![config.client_id.clone()]);
-        client
-            .id_token_verifier()
-            .set_other_audience_verifier_fn(|aud| valid_audiences.contains(aud));
 
         Ok(Self {
             client,
             end_session_url,
             after_logout_url,
             post_logout_redirect_name: config.additional.post_logout_redirect_name,
+            valid_audiences,
         })
     }
 
@@ -188,7 +187,7 @@ impl Client for OpenIdClient {
         let claims = Rc::new(
             id_token
                 .clone()
-                .into_claims(&self.client.id_token_verifier(), &Nonce::new(state.nonce))
+                .into_claims(&self.client.id_token_verifier().set_other_audience_verifier_fn(|aud| self.valid_audiences.contains(aud)), &Nonce::new(state.nonce))
                 .map_err(|err| {
                     OAuth2Error::LoginResult(format!("failed to verify ID token: {err}"))
                 })?,
