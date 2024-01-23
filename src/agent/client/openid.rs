@@ -102,6 +102,8 @@ impl Client for OpenIdClient {
 
         let client =
             CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
+        let valid_audiences = config.additional.valid_audiences.unwrap_or(vec![config.client_id]);
+        client.id_token_verifier().set_other_audience_verifier_fn(|aud| valid_audiences.contains(aud));
 
         Ok(Self {
             client,

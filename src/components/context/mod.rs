@@ -32,6 +32,9 @@ pub struct Props<C: Client> {
     #[prop_or_default]
     pub audience: Option<String>,
 
+    #[prop_or_default]
+    pub valid_audiences: Option<Vec<String>>,
+
     /// Children which will have access to the [`OAuth2Context`].
     #[prop_or_default]
     pub children: Children,
@@ -132,8 +135,9 @@ impl<C: Client> OAuth2<C> {
             config: props.config.clone(),
             scopes: props.scopes.clone(),
             grace_period: props.grace_period,
-            audience: props.audience.clone(),
+            valid_audiences: props.valid_audiences.clone(),
             options: props.options.clone(),
+            audience: props.audience.clone(),
         }
     }
 }
