@@ -100,10 +100,18 @@ impl Client for OpenIdClient {
 
         let after_logout_url = config.additional.after_logout_url;
 
-        let client =
-            CoreClient::from_provider_metadata(metadata, ClientId::new(config.client_id), None);
-        let valid_audiences = config.additional.valid_audiences.unwrap_or(vec![config.client_id]);
-        client.id_token_verifier().set_other_audience_verifier_fn(|aud| valid_audiences.contains(aud));
+        let client = CoreClient::from_provider_metadata(
+            metadata,
+            ClientId::new(config.client_id.clone()),
+            None,
+        );
+        let valid_audiences = config
+            .additional
+            .valid_audiences
+            .unwrap_or(vec![config.client_id.clone()]);
+        client
+            .id_token_verifier()
+            .set_other_audience_verifier_fn(|aud| valid_audiences.contains(aud));
 
         Ok(Self {
             client,
