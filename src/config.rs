@@ -29,6 +29,7 @@ pub mod openid {
         /// The defaults to `post_logout_redirect_uri` for OpenID RP initiated logout.
         /// However, e.g. older Keycloak instances require this to be `redirect_uri`.
         pub post_logout_redirect_name: Option<String>,
+        pub valid_audiences: Option<Vec<String>>
     }
 }
 
