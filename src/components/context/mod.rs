@@ -4,11 +4,9 @@ mod agent;
 
 pub use agent::*;
 
-use crate::context::LatestAccessToken;
-use crate::prelude::LoginOptions;
 use crate::{
-    agent::{AgentConfiguration, Client, OAuth2Operations},
-    context::OAuth2Context,
+    agent::{AgentConfiguration, Client, LoginOptions, OAuth2Operations},
+    context::{LatestAccessToken, OAuth2Context},
 };
 use agent::Agent as AgentContext;
 use std::time::Duration;
