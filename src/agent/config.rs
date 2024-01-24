@@ -1,7 +1,6 @@
+use super::LoginOptions;
 use crate::agent::Client;
 use std::time::Duration;
-
-use super::LoginOptions;
 
 #[derive(Clone, Debug)]
 pub struct AgentConfiguration<C: Client> {

@@ -25,14 +25,29 @@ use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
 
+/// Options for the login process
+///
+/// ## Non-exhaustive struct
+///
+/// The struct is "non exhaustive", which means that it is possible to add fields without breaking the API.
+///
+/// In order to create an instance, follow the following pattern:
+///
+/// ```rust
+/// # use reqwest::Url;
+/// # use yew_oauth2::prelude::LoginOptions;
+/// # let url = Url::parse("https://example.com").unwrap();
+/// let opts = LoginOptions::default().with_redirect_url(url);
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct LoginOptions {
-    pub query: HashMap<String, String>,
+    pub(crate) query: HashMap<String, String>,
 
     /// Defines the redirect URL.
     ///
     /// If this field is empty, the current URL is used as a redirect URL.
-    pub redirect_url: Option<Url>,
+    pub(crate) redirect_url: Option<Url>,
 }
 
 impl LoginOptions {
@@ -53,18 +68,29 @@ impl LoginOptions {
         self
     }
 
-    pub fn with_redirect_url(mut self, redirect_url: Url) -> Self {
-        self.redirect_url = Some(redirect_url);
+    pub fn with_redirect_url(mut self, redirect_url: impl Into<Url>) -> Self {
+        self.redirect_url = Some(redirect_url.into());
         self
     }
 }
 
+/// Options for the logout process
+///
+///**NOTE**: This is a non-exhaustive struct. See [`LoginOptions`] for an example on how to work with this.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LogoutOptions {
     /// An optional target to navigate to after the user was logged out.
     ///
     /// This would override any settings from the client configuration.
-    pub target: Option<Url>,
+    pub(crate) target: Option<Url>,
+}
+
+impl LogoutOptions {
+    pub fn with_target(mut self, target: impl Into<Url>) -> Self {
+        self.target = Some(target.into());
+        self
+    }
 }
 
 pub enum Msg<C>
