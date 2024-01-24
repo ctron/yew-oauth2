@@ -31,3 +31,9 @@ impl From<OAuth2Error> for OAuth2Context {
         OAuth2Context::Failed(err.to_string())
     }
 }
+
+impl OAuth2Error {
+    pub(crate) fn storage_key_empty(key: impl Display) -> Self {
+        Self::Storage(format!("Missing value for key: {key}"))
+    }
+}
