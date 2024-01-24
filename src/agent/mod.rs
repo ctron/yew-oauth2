@@ -4,7 +4,7 @@ pub mod client;
 mod config;
 mod error;
 mod ops;
-mod state;
+pub mod state;
 
 pub use client::*;
 pub use config::*;
@@ -12,20 +12,22 @@ pub use error::*;
 pub use ops::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
-use gloo_storage::{SessionStorage, Storage};
+use gloo_storage::{errors::StorageError, SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
 use js_sys::Date;
+use log::error;
 use num_traits::cast::ToPrimitive;
 use reqwest::Url;
 use state::*;
+use std::fmt::Display;
 use std::{collections::HashMap, fmt::Debug, time::Duration};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
 pub struct LoginOptions {
     pub query: HashMap<String, String>,
 
@@ -33,6 +35,11 @@ pub struct LoginOptions {
     ///
     /// If this field is empty, the current URL is used as a redirect URL.
     pub redirect_url: Option<Url>,
+
+    /// Defines callback used for post-login redirect.
+    ///
+    /// If None, disables post-login redirect
+    pub(crate) post_login_redirect_callback: Option<Callback<String>>,
 }
 
 impl LoginOptions {
@@ -53,8 +60,28 @@ impl LoginOptions {
         self
     }
 
+    /// Define the redirect URL
     pub fn with_redirect_url(mut self, redirect_url: Url) -> Self {
         self.redirect_url = Some(redirect_url);
+        self
+    }
+
+    /// Define callback for post-login redirect
+    pub fn with_redirect_callback(mut self, redirect_callback: Callback<String>) -> Self {
+        self.post_login_redirect_callback = Some(redirect_callback);
+        self
+    }
+
+    /// Use `yew-nested-route` history api for post-login redirect callback
+    #[cfg(feature = "yew-nested-router")]
+    pub fn with_nested_router_redirect(mut self) -> Self {
+        let callback = Callback::from(|url: String| {
+            if yew_nested_router::History::push_state(JsValue::null(), &url).is_err() {
+                error!("Unable to redirect");
+            }
+        });
+
+        self.post_login_redirect_callback = Some(callback);
         self
     }
 }
@@ -229,7 +256,11 @@ where
                     let detected = self.detect_state().await;
                     log::debug!("Detected state: {detected:?}");
                     match detected {
-                        Ok(true) => {}
+                        Ok(true) => {
+                            if let Err(e) = self.post_login_redirect() {
+                                error!("Post-login redirect failed: {e}");
+                            }
+                        }
                         Ok(false) => {
                             self.update_state(
                                 OAuth2Context::NotAuthenticated {
@@ -336,6 +367,24 @@ where
         }
     }
 
+    fn post_login_redirect(&self) -> Result<(), OAuth2Error> {
+        let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+        let Some(redirect_callback) = config
+            .options
+            .as_ref()
+            .and_then(|opts| opts.post_login_redirect_callback.clone())
+        else {
+            return Ok(());
+        };
+        let Some(url) = Self::get_from_store_optional(STORAGE_KEY_POST_LOGIN_URL)? else {
+            return Ok(());
+        };
+        SessionStorage::delete(STORAGE_KEY_POST_LOGIN_URL);
+        redirect_callback.emit(url);
+
+        Ok(())
+    }
+
     fn update_state_from_result(
         &mut self,
         result: Result<(OAuth2Context, C::SessionState), OAuth2Error>,
@@ -379,17 +428,18 @@ where
         }
     }
 
-    fn get_from_store<K: AsRef<str>>(key: K) -> Result<String, OAuth2Error> {
-        let value: String = SessionStorage::get(key.as_ref())
-            .map_err(|err| OAuth2Error::Storage(err.to_string()))?;
+    fn get_from_store<K: AsRef<str> + Display>(key: K) -> Result<String, OAuth2Error> {
+        Self::get_from_store_optional(&key)?.ok_or_else(|| OAuth2Error::storage_key_empty(key))
+    }
 
-        if value.is_empty() {
-            Err(OAuth2Error::Storage(format!(
-                "Missing value for key: {}",
-                key.as_ref()
-            )))
-        } else {
-            Ok(value)
+    fn get_from_store_optional<K: AsRef<str> + Display>(
+        key: K,
+    ) -> Result<Option<String>, OAuth2Error> {
+        match SessionStorage::get::<String>(key.as_ref()) {
+            Err(StorageError::KeyNotFound(_)) => Ok(None),
+            Err(err) => Err(OAuth2Error::Storage(err.to_string())),
+            Ok(value) if value.is_empty() => Err(OAuth2Error::storage_key_empty(key)),
+            Ok(value) => Ok(Some(value)),
         }
     }
 
