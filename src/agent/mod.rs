@@ -12,7 +12,6 @@ pub use error::*;
 pub use ops::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
-use gloo_storage::errors::StorageError;
 use gloo_storage::{SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
@@ -71,11 +70,6 @@ impl LoginOptions {
 
     pub fn with_redirect_url(mut self, redirect_url: impl Into<Url>) -> Self {
         self.redirect_url = Some(redirect_url.into());
-        self
-    }
-
-    pub fn with_store_current_url_in_session(mut self) -> Self {
-        self.keep_current_url_in_session = Some(true);
         self
     }
 }
