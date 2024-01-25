@@ -72,6 +72,12 @@ impl LoginOptions {
         self.redirect_url = Some(redirect_url.into());
         self
     }
+
+    pub fn with_store_current_url_in_session(mut self, key: Option<String>) -> Self {
+        self.keep_current_url_in_session = Some(true);
+        self.keep_current_url_session_key = key;
+        self
+    }
 }
 
 /// Options for the logout process
