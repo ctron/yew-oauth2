@@ -187,7 +187,13 @@ impl Client for OpenIdClient {
         let claims = Rc::new(
             id_token
                 .clone()
-                .into_claims(&self.client.id_token_verifier().set_other_audience_verifier_fn(|aud| self.valid_audiences.contains(aud)), &Nonce::new(state.nonce))
+                .into_claims(
+                    &self
+                        .client
+                        .id_token_verifier()
+                        .set_other_audience_verifier_fn(|aud| self.valid_audiences.contains(aud)),
+                    &Nonce::new(state.nonce),
+                )
                 .map_err(|err| {
                     OAuth2Error::LoginResult(format!("failed to verify ID token: {err}"))
                 })?,
