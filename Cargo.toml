@@ -37,7 +37,7 @@ yew-nested-router = { version = "0.6.3", optional = true }
 
 [features]
 # Enable for Yew nested router support
-router = ["yew-nested-router"]
+nested-router = ["yew-nested-router"]
 # Enable for OpenID Connect support
 openid = ["openidconnect"]
 
