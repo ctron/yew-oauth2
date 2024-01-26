@@ -39,7 +39,7 @@ jobs:
 
       - name: Run cargo fmt
         run: |
-          cargo fmt --all -- --check
+          cargo +${{ matrix.toolchain }} fmt --all -- --check
 
       - name: Install binstall
         run: |
@@ -51,15 +51,19 @@ jobs:
 
       - name: Run cargo check
         run: |
-          cargo check-all-features --target wasm32-unknown-unknown
+          cargo +${{ matrix.toolchain }} check-all-features --target wasm32-unknown-unknown
 
       - name: Run cargo test
         run: |
-          cargo test-all-features
+          cargo +${{ matrix.toolchain }} test-all-features
 
       - name: Run cargo clippy
         run: |
-          cargo clippy --target wasm32-unknown-unknown -- -D warnings
+          cargo +${{ matrix.toolchain }} clippy --target wasm32-unknown-unknown -- -D warnings
+
+      - name: Run cargo clippy (all features)
+        run: |
+          cargo +${{ matrix.toolchain }} clippy --all-features --target wasm32-unknown-unknown -- -D warnings
 
   examples:
 
