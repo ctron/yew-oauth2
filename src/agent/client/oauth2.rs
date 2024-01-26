@@ -41,19 +41,25 @@ impl OAuth2Client {
 
 #[async_trait(?Send)]
 impl Client for OAuth2Client {
-    type TokenResponse = ::oauth2::basic::BasicTokenResponse;
+    type TokenResponse = BasicTokenResponse;
     type Configuration = oauth2::Config;
     type LoginState = LoginState;
     type SessionState = ();
 
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
+        let oauth2::Config {
+            client_id,
+            auth_url,
+            token_url,
+        } = config;
+
         let client = BasicClient::new(
-            ClientId::new(config.client_id),
+            ClientId::new(client_id),
             None,
-            AuthUrl::new(config.auth_url)
+            AuthUrl::new(auth_url)
                 .map_err(|err| OAuth2Error::Configuration(format!("invalid auth URL: {err}")))?,
             Some(
-                TokenUrl::new(config.token_url).map_err(|err| {
+                TokenUrl::new(token_url).map_err(|err| {
                     OAuth2Error::Configuration(format!("invalid token URL: {err}"))
                 })?,
             ),

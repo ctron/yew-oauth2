@@ -85,7 +85,16 @@ impl Client for OpenIdClient {
     );
 
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
-        let issuer = IssuerUrl::new(config.issuer_url)
+        let openid::Config {
+            client_id,
+            issuer_url,
+            end_session_url,
+            after_logout_url,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
+        } = config;
+
+        let issuer = IssuerUrl::new(issuer_url)
             .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
 
         let metadata = ExtendedProviderMetadata::discover_async(issuer, async_http_client)
@@ -94,9 +103,7 @@ impl Client for OpenIdClient {
                 OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
             })?;
 
-        let end_session_url = config
-            .additional
-            .end_session_url
+        let end_session_url = end_session_url
             .map(|url| Url::parse(&url))
             .transpose()
             .map_err(|err| {
@@ -104,20 +111,14 @@ impl Client for OpenIdClient {
             })?
             .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
 
-        let after_logout_url = config.additional.after_logout_url;
-
-        let client = CoreClient::from_provider_metadata(
-            metadata,
-            ClientId::new(config.client_id.clone()),
-            None,
-        );
+        let client = CoreClient::from_provider_metadata(metadata, ClientId::new(client_id), None);
 
         Ok(Self {
             client,
             end_session_url,
             after_logout_url,
-            post_logout_redirect_name: config.additional.post_logout_redirect_name,
-            additional_trusted_audiences: config.additional.additional_trusted_audiences,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
         })
     }
 
@@ -271,7 +272,7 @@ impl OpenIdClient {
     fn after_logout_url(&self) -> Option<String> {
         if let Some(after) = &self.after_logout_url {
             if Url::parse(after).is_ok() {
-                // test if the is an absolute URL
+                // test if this is an absolute URL
                 return Some(after.to_string());
             }
 
