@@ -4,12 +4,13 @@ pub mod client;
 mod config;
 mod error;
 mod ops;
-pub mod state;
+mod state;
 
 pub use client::*;
-pub use config::*;
 pub use error::*;
 pub use ops::*;
+
+pub(crate) use config::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
 use gloo_storage::{errors::StorageError, SessionStorage, Storage};

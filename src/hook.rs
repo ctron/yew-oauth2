@@ -1,3 +1,5 @@
+//! Hooks for Yew
+
 use crate::{context::LatestAccessToken, prelude::OAuth2Context};
 use yew::prelude::*;
 

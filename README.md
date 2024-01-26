@@ -10,7 +10,8 @@ Add to your `Cargo.toml`:
 yew-oauth2 = "0.9"
 ```
 
-By default, the `router` integration is disabled, you can enable it using:
+By default, the `router` integration for [`yew-nested-router`](https://github.com/ctron/yew-nested-router) is disabled,
+you can enable it using:
 
 ```toml
 yew-oauth2 = { version = "0.9", features = ["router"] }
@@ -31,14 +32,14 @@ use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 
 #[function_component(MyApplication)]
 fn my_app() -> Html {
-  let config = Config {
-    client_id: "my-client".into(),
-    auth_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth".into(),
-    token_url: "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token".into(),
-  };
+  let config = Config::new(
+    "my-client",
+    "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth",
+    "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token"
+  );
 
   html!(
-    <OAuth2 config={config}>
+    <OAuth2 {config}>
       <MyApplicationMain/>
     </OAuth2>
   )
@@ -48,13 +49,10 @@ fn my_app() -> Html {
 fn my_app_main() -> Html {
   let agent = use_auth_agent().expect("Must be nested inside an OAuth2 component");
 
-  let login = {
-    let agent = agent.clone();
-    Callback::from(move |_| {
-      let _ = agent.start_login();
-    })
-  };
-  let logout = Callback::from(move |_| {
+  let login = use_callback(agent.clone(), |_, agent| {
+    let _ = agent.start_login();
+  });
+  let logout = use_callback(agent, |_, agent| {
     let _ = agent.logout();
   });
 
