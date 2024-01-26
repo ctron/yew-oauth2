@@ -31,13 +31,17 @@ pub struct OpenIdLoginState {
     pub nonce: String,
 }
 
-const POST_LOGOUT_DIRECT: &str = "post_logout_redirect_uri";
+const DEFAULT_POST_LOGOUT_DIRECT_NAME: &str = "post_logout_redirect_uri";
 
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
+    /// The client
     client: CoreClient,
+    /// An override for the URL to end the session (logout)
     end_session_url: Option<Url>,
+    /// A URL to direct to after the logout was performed
     after_logout_url: Option<String>,
+    /// The name of the query parameter sent to the issuer, containing the post-logout redirect URL
     post_logout_redirect_name: Option<String>,
     valid_audiences: Vec<String>,
 }
@@ -242,7 +246,7 @@ impl Client for OpenIdClient {
             let name = self
                 .post_logout_redirect_name
                 .as_deref()
-                .unwrap_or(POST_LOGOUT_DIRECT);
+                .unwrap_or(DEFAULT_POST_LOGOUT_DIRECT_NAME);
 
             url.query_pairs_mut()
                 .append_pair("id_token_hint", &session_state.0);
