@@ -1,13 +1,20 @@
 use crate::context::OAuth2Context;
 use core::fmt::{Display, Formatter};
 
+/// An error with the OAuth2 agent
 #[derive(Debug)]
 pub enum OAuth2Error {
+    /// Not initialized
     NotInitialized,
+    /// Configuration error
     Configuration(String),
+    /// Failed to start login
     StartLogin(String),
+    /// Failed to handle login result
     LoginResult(String),
+    /// Failing storing information
     Storage(String),
+    /// Internal error
     Internal(String),
 }
 

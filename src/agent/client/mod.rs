@@ -1,3 +1,5 @@
+//! Client implementations
+
 mod oauth2;
 #[cfg(feature = "openid")]
 mod openid;

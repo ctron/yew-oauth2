@@ -19,7 +19,7 @@ pub trait Redirector: 'static {
 }
 
 pub trait RedirectorProperties: yew::Properties {
-    fn children(&self) -> &Children;
+    fn children(&self) -> &Html;
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +104,7 @@ where
     fn view(&self, ctx: &Context<Self>) -> Html {
         match self.auth {
             None => missing_context(),
-            Some(OAuth2Context::Authenticated(..)) => html!({for ctx.props().children().iter()}),
+            Some(OAuth2Context::Authenticated(..)) => ctx.props().children().clone(),
             _ => html!(),
         }
     }
