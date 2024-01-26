@@ -143,7 +143,7 @@ where
                             }
                         }
                         _ => {
-                            // expired or logged out explicitly, then redirect to logout page
+                            // expired or logged out explicitly, then redirect to the logout page
                             self.logout(ctx.props());
                         }
                     }
