@@ -5,7 +5,7 @@ mod agent;
 pub use agent::*;
 
 use crate::{
-    agent::{AgentConfiguration, Client, LoginOptions, OAuth2Operations},
+    agent::{AgentConfiguration, Client, LoginOptions, LogoutOptions, OAuth2Operations},
     context::{LatestAccessToken, OAuth2Context},
 };
 use agent::Agent as AgentContext;
@@ -36,9 +36,13 @@ pub struct OAuth2Properties<C: Client> {
     #[prop_or_default]
     pub children: Children,
 
-    /// Default [`LoginOptions`] that will be used for every request
+    /// Default [`LoginOptions`] that will be used unless more specific options have been requested.
     #[prop_or_default]
-    pub options: Option<LoginOptions>,
+    pub login_options: Option<LoginOptions>,
+
+    /// Default [`LogoutOptions`] that will be used unless more specific options have been requested.
+    #[prop_or_default]
+    pub logout_options: Option<LogoutOptions>,
 }
 
 impl<C: Client> PartialEq for OAuth2Properties<C> {
@@ -132,8 +136,9 @@ impl<C: Client> OAuth2<C> {
             config: props.config.clone(),
             scopes: props.scopes.clone(),
             grace_period: props.grace_period,
-            options: props.options.clone(),
             audience: props.audience.clone(),
+            default_login_options: props.login_options.clone(),
+            default_logout_options: props.logout_options.clone(),
         }
     }
 }
