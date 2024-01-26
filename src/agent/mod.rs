@@ -9,11 +9,12 @@ mod state;
 pub use client::*;
 pub use error::*;
 pub use ops::*;
+pub use state::LoginState;
 
 pub(crate) use config::*;
 
 use crate::context::{Authentication, OAuth2Context, Reason};
-use gloo_storage::{errors::StorageError, SessionStorage, Storage};
+use gloo_storage::{SessionStorage, Storage};
 use gloo_timers::callback::Timeout;
 use gloo_utils::{history, window};
 use js_sys::Date;
@@ -21,7 +22,6 @@ use log::error;
 use num_traits::cast::ToPrimitive;
 use reqwest::Url;
 use state::*;
-use std::fmt::Display;
 use std::{collections::HashMap, fmt::Debug, time::Duration};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use wasm_bindgen::JsValue;
@@ -412,7 +412,7 @@ where
                     ))
                 }
                 Some(state) => {
-                    let stored_state = Self::get_from_store(STORAGE_KEY_CSRF_TOKEN)?;
+                    let stored_state = get_from_store(STORAGE_KEY_CSRF_TOKEN)?;
 
                     if state != stored_state {
                         return Err(OAuth2Error::LoginResult("State mismatch".to_string()));
@@ -427,7 +427,7 @@ where
 
             log::debug!("Login state: {state:?}");
 
-            let redirect_url = Self::get_from_store(STORAGE_KEY_REDIRECT_URL)?;
+            let redirect_url = get_from_store(STORAGE_KEY_REDIRECT_URL)?;
             log::debug!("Redirect URL: {redirect_url}");
             let redirect_url = Url::parse(&redirect_url).map_err(|err| {
                 OAuth2Error::LoginResult(format!("Failed to parse redirect URL: {err}"))
@@ -454,7 +454,7 @@ where
         else {
             return Ok(());
         };
-        let Some(url) = Self::get_from_store_optional(STORAGE_KEY_POST_LOGIN_URL)? else {
+        let Some(url) = get_from_store_optional(STORAGE_KEY_POST_LOGIN_URL)? else {
             return Ok(());
         };
         SessionStorage::delete(STORAGE_KEY_POST_LOGIN_URL);
@@ -503,21 +503,6 @@ where
                 .exchange_refresh_token(refresh_token.clone(), session_state)
                 .await;
             self.update_state_from_result(result);
-        }
-    }
-
-    fn get_from_store<K: AsRef<str> + Display>(key: K) -> Result<String, OAuth2Error> {
-        Self::get_from_store_optional(&key)?.ok_or_else(|| OAuth2Error::storage_key_empty(key))
-    }
-
-    fn get_from_store_optional<K: AsRef<str> + Display>(
-        key: K,
-    ) -> Result<Option<String>, OAuth2Error> {
-        match SessionStorage::get::<String>(key.as_ref()) {
-            Err(StorageError::KeyNotFound(_)) => Ok(None),
-            Err(err) => Err(OAuth2Error::Storage(err.to_string())),
-            Ok(value) if value.is_empty() => Err(OAuth2Error::storage_key_empty(key)),
-            Ok(value) => Ok(Some(value)),
         }
     }
 
