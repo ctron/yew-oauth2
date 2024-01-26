@@ -21,6 +21,3 @@ openidconnect = { version = "3.0", optional = true }
 [features]
 default = ["openid"]
 openid = ["openidconnect", "yew-oauth2/openid"]
-
-[patch.crates-io]
-#openidconnect = { git = "https://github.com/ramosbugs/openidconnect-rs", rev = "64be3c7636bc6f745a9b33f0702950bbacca318c" }
