@@ -7,19 +7,13 @@ pub mod openid {
     use super::*;
 
     /// OpenID Connect client configuration
+    #[non_exhaustive]
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Config {
         /// The client ID
         pub client_id: String,
         /// The OpenID connect issuer URL.
         pub issuer_url: String,
-        #[serde(default)]
-        /// Additional, non-required configuration, with a default.
-        pub additional: Additional,
-    }
-
-    #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct Additional {
         /// An override for the end session URL.
         pub end_session_url: Option<String>,
         /// The URL to navigate to after the logout has been completed.
@@ -34,6 +28,8 @@ pub mod openid {
         /// Those audiences are allowed in addition to the client ID.
         pub additional_trusted_audiences: Vec<String>,
     }
+
+    impl Config {}
 }
 
 /// Configuration for OAuth2
@@ -41,6 +37,12 @@ pub mod oauth2 {
     use super::*;
 
     /// Plain OAuth2 client configuration
+    ///
+    /// ## Non-exhaustive
+    ///
+    /// This struct is `#[non_exhaustive]`, so it is not possible to directly create a struct. You can do this using
+    /// the [`Config::new`] function.
+    #[non_exhaustive]
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Config {
         /// The client ID
@@ -52,14 +54,11 @@ pub mod oauth2 {
     }
 
     impl Config {
-        pub fn new<C, A, T, S, I>(client_id: C, auth_url: A, token_url: T) -> Self
-        where
-            C: Into<String>,
-            A: Into<String>,
-            T: Into<String>,
-            S: IntoIterator<Item = I>,
-            I: Into<String>,
-        {
+        pub fn new(
+            client_id: impl Into<String>,
+            auth_url: impl Into<String>,
+            token_url: impl Into<String>,
+        ) -> Self {
             Self {
                 client_id: client_id.into(),
                 auth_url: auth_url.into(),
