@@ -103,18 +103,14 @@ pub fn content() -> Html {
 #[function_component(Application)]
 pub fn app() -> Html {
     #[cfg(not(feature = "openid"))]
-    let config = Config {
-        client_id: "example".into(),
-        auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
-        token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
-    };
+    let config = Config::new(
+        "example",
+        "http://localhost:8081/realms/master/protocol/openid-connect/auth",
+        "http://localhost:8081/realms/master/protocol/openid-connect/token",
+    );
 
     #[cfg(feature = "openid")]
-    let config = Config {
-        client_id: "example".into(),
-        issuer_url: "http://localhost:8081/realms/master".into(),
-        additional: Default::default(),
-    };
+    let config = Config::new("example", "http://localhost:8081/realms/master");
 
     let mode = if cfg!(feature = "openid") {
         "OpenID Connect"
