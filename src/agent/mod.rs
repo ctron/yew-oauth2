@@ -140,8 +140,8 @@ where
     C: Client,
 {
     Configure(AgentConfiguration<C>),
-    StartLogin(LoginOptions),
-    Logout(LogoutOptions),
+    StartLogin(Option<LoginOptions>),
+    Logout(Option<LogoutOptions>),
     Refresh,
 }
 
@@ -188,7 +188,8 @@ pub struct InnerConfig {
     scopes: Vec<String>,
     grace_period: Duration,
     audience: Option<String>,
-    options: Option<LoginOptions>,
+    default_login_options: Option<LoginOptions>,
+    default_logout_options: Option<LogoutOptions>,
 }
 
 impl<C> InnerAgent<C>
@@ -331,7 +332,8 @@ where
             scopes,
             grace_period,
             audience,
-            options,
+            default_login_options,
+            default_logout_options,
         } = config;
 
         let client = C::from_config(config).await?;
@@ -340,7 +342,8 @@ where
             scopes,
             grace_period,
             audience,
-            options,
+            default_login_options,
+            default_logout_options,
         };
 
         Ok((client, inner))
@@ -419,7 +422,7 @@ where
     fn post_login_redirect(&self) -> Result<(), OAuth2Error> {
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let Some(redirect_callback) = config
-            .options
+            .default_login_options
             .as_ref()
             .and_then(|opts| opts.post_login_redirect_callback.clone())
         else {
@@ -529,9 +532,12 @@ where
         self.configured(Self::make_client(config).await).await;
     }
 
-    fn start_login(&mut self, options: LoginOptions) -> Result<(), OAuth2Error> {
+    fn start_login(&mut self, options: Option<LoginOptions>) -> Result<(), OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
         let config = self.config.as_ref().ok_or(OAuth2Error::NotInitialized)?;
+
+        let options =
+            options.unwrap_or_else(|| config.default_login_options.clone().unwrap_or_default());
 
         let current_url = Self::current_url().map_err(OAuth2Error::StartLogin)?;
 
@@ -540,7 +546,7 @@ where
             .redirect_url
             .or_else(|| {
                 config
-                    .options
+                    .default_login_options
                     .as_ref()
                     .and_then(|opts| opts.redirect_url.clone())
             })
@@ -565,7 +571,7 @@ where
         let mut login_url = login_context.url;
 
         login_url.query_pairs_mut().extend_pairs(options.query);
-        if let Some(options) = &config.options {
+        if let Some(options) = &config.default_login_options {
             login_url
                 .query_pairs_mut()
                 .extend_pairs(options.query.clone());
@@ -586,12 +592,19 @@ where
         Ok(())
     }
 
-    fn logout_opts(&mut self, options: LogoutOptions) {
+    fn logout_opts(&mut self, options: Option<LogoutOptions>) {
         if let Some(client) = &self.client {
             if let Some(session_state) = self.session_state.clone() {
                 // let the client know that log out, clients may navigate to a different
                 // page
                 log::debug!("Notify client of logout");
+                let options = options
+                    .or_else(|| {
+                        self.config
+                            .as_ref()
+                            .and_then(|config| config.default_logout_options.clone())
+                    })
+                    .unwrap_or_default();
                 client.logout(session_state, options);
             }
         }
@@ -618,15 +631,27 @@ where
             .map_err(|_| Error::NoAgent)
     }
 
+    fn start_login(&self) -> Result<(), Error> {
+        self.tx
+            .try_send(Msg::StartLogin(None))
+            .map_err(|_| Error::NoAgent)
+    }
+
     fn start_login_opts(&self, options: LoginOptions) -> Result<(), Error> {
         self.tx
-            .try_send(Msg::StartLogin(options))
+            .try_send(Msg::StartLogin(Some(options)))
+            .map_err(|_| Error::NoAgent)
+    }
+
+    fn logout(&self) -> Result<(), Error> {
+        self.tx
+            .try_send(Msg::Logout(None))
             .map_err(|_| Error::NoAgent)
     }
 
     fn logout_opts(&self, options: LogoutOptions) -> Result<(), Error> {
         self.tx
-            .try_send(Msg::Logout(options))
+            .try_send(Msg::Logout(Some(options)))
             .map_err(|_| Error::NoAgent)
     }
 }

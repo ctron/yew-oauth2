@@ -25,17 +25,13 @@ pub trait OAuth2Operations<C: Client> {
     fn configure(&self, config: AgentConfiguration<C>) -> Result<(), Error>;
 
     /// Start a login flow with default options.
-    fn start_login(&self) -> Result<(), Error> {
-        self.start_login_opts(Default::default())
-    }
+    fn start_login(&self) -> Result<(), Error>;
 
     /// Start a login flow.
     fn start_login_opts(&self, options: LoginOptions) -> Result<(), Error>;
 
     /// Trigger the logout with default options.
-    fn logout(&self) -> Result<(), Error> {
-        self.logout_opts(Default::default())
-    }
+    fn logout(&self) -> Result<(), Error>;
 
     /// Trigger the logout.
     fn logout_opts(&self, options: LogoutOptions) -> Result<(), Error>;
