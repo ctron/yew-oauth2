@@ -43,7 +43,8 @@ pub struct OpenIdClient {
     after_logout_url: Option<String>,
     /// The name of the query parameter sent to the issuer, containing the post-logout redirect URL
     post_logout_redirect_name: Option<String>,
-    valid_audiences: Vec<String>,
+    /// Additional audiences of the ID token which are considered trustworthy
+    additional_trusted_audiences: Vec<String>,
 }
 
 /// Additional metadata read from the discovery endpoint
@@ -110,17 +111,13 @@ impl Client for OpenIdClient {
             ClientId::new(config.client_id.clone()),
             None,
         );
-        let valid_audiences = config
-            .additional
-            .valid_audiences
-            .unwrap_or(vec![config.client_id.clone()]);
 
         Ok(Self {
             client,
             end_session_url,
             after_logout_url,
             post_logout_redirect_name: config.additional.post_logout_redirect_name,
-            valid_audiences,
+            additional_trusted_audiences: config.additional.additional_trusted_audiences,
         })
     }
 
@@ -195,7 +192,9 @@ impl Client for OpenIdClient {
                     &self
                         .client
                         .id_token_verifier()
-                        .set_other_audience_verifier_fn(|aud| self.valid_audiences.contains(aud)),
+                        .set_other_audience_verifier_fn(|aud| {
+                            self.additional_trusted_audiences.contains(aud)
+                        }),
                     &Nonce::new(state.nonce),
                 )
                 .map_err(|err| {
