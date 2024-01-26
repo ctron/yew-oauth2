@@ -14,7 +14,7 @@ use yew::prelude::*;
 
 /// Properties for the context component.
 #[derive(Clone, Debug, Properties)]
-pub struct Props<C: Client> {
+pub struct OAuth2Properties<C: Client> {
     /// The client configuration
     pub config: C::Configuration,
 
@@ -44,7 +44,7 @@ pub struct Props<C: Client> {
     pub options: Option<LoginOptions>,
 }
 
-impl<C: Client> PartialEq for Props<C> {
+impl<C: Client> PartialEq for OAuth2Properties<C> {
     fn eq(&self, other: &Self) -> bool {
         self.config == other.config
             && self.scopes == other.scopes
@@ -70,7 +70,7 @@ pub enum Msg {
 
 impl<C: Client> Component for OAuth2<C> {
     type Message = Msg;
-    type Properties = Props<C>;
+    type Properties = OAuth2Properties<C>;
 
     fn create(ctx: &Context<Self>) -> Self {
         let config = Self::make_config(ctx.props());
@@ -130,7 +130,7 @@ impl<C: Client> Component for OAuth2<C> {
 }
 
 impl<C: Client> OAuth2<C> {
-    fn make_config(props: &Props<C>) -> AgentConfiguration<C> {
+    fn make_config(props: &OAuth2Properties<C>) -> AgentConfiguration<C> {
         AgentConfiguration {
             config: props.config.clone(),
             scopes: props.scopes.clone(),
