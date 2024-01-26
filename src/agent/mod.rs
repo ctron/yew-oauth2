@@ -326,13 +326,21 @@ where
     }
 
     async fn make_client(config: AgentConfiguration<C>) -> Result<(C, InnerConfig), OAuth2Error> {
-        let client = C::from_config(config.config).await?;
+        let AgentConfiguration {
+            config,
+            scopes,
+            grace_period,
+            audience,
+            options,
+        } = config;
+
+        let client = C::from_config(config).await?;
 
         let inner = InnerConfig {
-            scopes: config.scopes,
-            grace_period: config.grace_period,
-            audience: config.audience,
-            options: config.options,
+            scopes,
+            grace_period,
+            audience,
+            options,
         };
 
         Ok((client, inner))
@@ -341,7 +349,7 @@ where
     /// When initializing, try to detect the state from the URL and session state.
     ///
     /// Returns `false` if there is no authentication state found and the result is final.
-    /// Otherwise it returns `true` and spawns a request for e.g. a code exchange.
+    /// Otherwise, it returns `true` and spawns a request for e.g. a code exchange.
     async fn detect_state(&mut self) -> Result<bool, OAuth2Error> {
         let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
 
