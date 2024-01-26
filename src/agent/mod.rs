@@ -143,7 +143,7 @@ pub struct LogoutOptions {
     /// An optional target to navigate to after the user was logged out.
     ///
     /// This would override any settings from the client configuration.
-    pub(crate) target: Option<Url>,
+    pub target: Option<Url>,
 }
 
 impl LogoutOptions {
