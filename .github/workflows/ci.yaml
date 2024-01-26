@@ -21,14 +21,14 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Rust ${{ matrix.toolchain }}
         run: |
           rustup toolchain install ${{ matrix.toolchain }} --component rustfmt,clippy --target wasm32-unknown-unknown
           rustup default ${{ matrix.toolchain }}
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -67,9 +67,9 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index/
