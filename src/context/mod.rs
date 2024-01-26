@@ -6,9 +6,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 pub use utils::*;
 
-// re-export from there to keep API stable
-pub use crate::hook::use_auth_state;
-
 #[cfg(feature = "openid")]
 pub type Claims = openidconnect::IdTokenClaims<
     openidconnect::EmptyAdditionalClaims,
