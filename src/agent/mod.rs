@@ -45,17 +45,22 @@ use yew::Callback;
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct LoginOptions {
-    pub(crate) query: HashMap<String, String>,
+    /// Additional query parameters sent to the issuer.
+    pub query: HashMap<String, String>,
 
     /// Defines the redirect URL.
     ///
     /// If this field is empty, the current URL is used as a redirect URL.
-    pub(crate) redirect_url: Option<Url>,
+    pub redirect_url: Option<Url>,
 
     /// Defines callback used for post-login redirect.
     ///
-    /// If None, disables post-login redirect
-    pub(crate) post_login_redirect_callback: Option<Callback<String>>,
+    /// In cases where the issuer is asked to redirect to a different page than the one being active when starting
+    /// the login flow, this callback will be called with the current (when starting) URL once the login handshake
+    /// is complete.
+    ///
+    /// If `None`, disables post-login redirect.
+    pub post_login_redirect_callback: Option<Callback<String>>,
 }
 
 impl LoginOptions {
@@ -70,27 +75,30 @@ impl LoginOptions {
     }
 
     /// Extend the current query parameters for the login request
-    pub fn with_extended_query(
-        mut self,
-        query: impl IntoIterator<Item = (String, String)>,
-    ) -> Self {
+    pub fn extend_query(mut self, query: impl IntoIterator<Item = (String, String)>) -> Self {
         self.query.extend(query);
         self
     }
 
-    /// Define the redirect URL
+    /// Add a query parameter for the login request
+    pub fn add_query(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.query.insert(key.into(), value.into());
+        self
+    }
+
+    /// Set the redirect URL
     pub fn with_redirect_url(mut self, redirect_url: impl Into<Url>) -> Self {
         self.redirect_url = Some(redirect_url.into());
         self
     }
 
-    /// Define callback for post-login redirect
+    /// Set a callback for post-login redirect
     pub fn with_redirect_callback(mut self, redirect_callback: Callback<String>) -> Self {
         self.post_login_redirect_callback = Some(redirect_callback);
         self
     }
 
-    /// Use `yew-nested-router` history api for post-login redirect callback
+    /// Use `yew-nested-router` History API for post-login redirect callback
     #[cfg(feature = "yew-nested-router")]
     pub fn with_nested_router_redirect(mut self) -> Self {
         let callback = Callback::from(|url: String| {
@@ -117,6 +125,10 @@ pub struct LogoutOptions {
 }
 
 impl LogoutOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn with_target(mut self, target: impl Into<Url>) -> Self {
         self.target = Some(target.into());
         self
