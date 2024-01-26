@@ -129,7 +129,7 @@ pub fn app() -> Html {
         back to the current page, which is detected as a new session, and will try to log in
         again, if the page requires this.
         */
-        .with_after_logout_url(Some("/".into()));
+        .with_after_logout_url("/");
 
     let mode = if cfg!(feature = "openid") {
         "OpenID Connect"

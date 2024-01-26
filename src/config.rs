@@ -49,26 +49,23 @@ pub mod openid {
         }
 
         /// Set an override for the URL for ending the session.
-        pub fn with_end_session_url(mut self, end_session_url: impl Into<Option<String>>) -> Self {
-            self.end_session_url = end_session_url.into();
+        pub fn with_end_session_url(mut self, end_session_url: impl Into<String>) -> Self {
+            self.end_session_url = Some(end_session_url.into());
             self
         }
 
         /// Set the URL the issuer should redirect to after the logout
-        pub fn with_after_logout_url(
-            mut self,
-            after_logout_url: impl Into<Option<String>>,
-        ) -> Self {
-            self.after_logout_url = after_logout_url.into();
+        pub fn with_after_logout_url(mut self, after_logout_url: impl Into<String>) -> Self {
+            self.after_logout_url = Some(after_logout_url.into());
             self
         }
 
         /// Set the name of the post logout redirect query parameter
         pub fn with_post_logout_redirect_name(
             mut self,
-            post_logout_redirect_name: impl Into<Option<String>>,
+            post_logout_redirect_name: impl Into<String>,
         ) -> Self {
-            self.post_logout_redirect_name = post_logout_redirect_name.into();
+            self.post_logout_redirect_name = Some(post_logout_redirect_name.into());
             self
         }
 
