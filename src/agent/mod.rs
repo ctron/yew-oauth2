@@ -62,11 +62,13 @@ impl LoginOptions {
         LoginOptions::default()
     }
 
+    /// Set the query parameters for the login request
     pub fn with_query(mut self, query: impl IntoIterator<Item = (String, String)>) -> Self {
         self.query = HashMap::from_iter(query);
         self
     }
 
+    /// Extend the current query parameters for the login request
     pub fn with_extended_query(
         mut self,
         query: impl IntoIterator<Item = (String, String)>,
