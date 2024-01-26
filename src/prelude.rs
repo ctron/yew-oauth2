@@ -1,6 +1,6 @@
 //! The prelude, includes most things you will need.
 
-pub use crate::agent::{AgentConfiguration, LoginOptions, OAuth2Error, OAuth2Operations};
+pub use crate::agent::{LoginOptions, OAuth2Error, OAuth2Operations};
 pub use crate::components::*;
 pub use crate::context::*;
 pub use crate::hook::*;
