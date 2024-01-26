@@ -22,9 +22,10 @@ pub struct LoginState {
     pub pkce_verifier: String,
 }
 
+/// An OAuth2 based client implementation
 #[derive(Clone, Debug)]
 pub struct OAuth2Client {
-    client: ::oauth2::basic::BasicClient,
+    client: BasicClient,
 }
 
 impl OAuth2Client {

@@ -1,6 +1,7 @@
 use super::{AgentConfiguration, Client, LoginOptions, LogoutOptions};
 use std::fmt::{Display, Formatter};
 
+/// Operation error
 #[derive(Clone, Debug)]
 pub enum Error {
     /// The agent cannot be reached.

@@ -33,6 +33,7 @@ pub struct OpenIdLoginState {
 
 const DEFAULT_POST_LOGOUT_DIRECT_NAME: &str = "post_logout_redirect_uri";
 
+/// An OpenID Connect based client implementation
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
     /// The client

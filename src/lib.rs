@@ -10,7 +10,7 @@
 //!
 //! ## Example
 //!
-//! **NOTE:** Also see the readme for more examples.
+//! **NOTE:** Also see the [readme](https://github.com/ctron/yew-oauth2/blob/main/README.md#examples) for more examples.
 //!
 //! The following is a basic example:
 //!

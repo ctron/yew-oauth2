@@ -5,10 +5,10 @@ use gloo_utils::window;
 use yew::prelude::*;
 
 /// A redirector using the browser's location.
-pub struct LocationRedirector {}
+pub struct LocationRedirector;
 
 impl Redirector for LocationRedirector {
-    type Properties = LocationProps;
+    type Properties = LocationProperties;
 
     fn new<COMP: Component>(_: &Context<COMP>) -> Self {
         Self {}
@@ -21,15 +21,17 @@ impl Redirector for LocationRedirector {
 }
 
 #[derive(Clone, Debug, PartialEq, Properties)]
-pub struct LocationProps {
+pub struct LocationProperties {
+    /// The content to show when being logged in.
     #[prop_or_default]
-    pub children: Children,
+    pub children: Html,
 
+    /// The logout URL to redirect to
     pub logout_href: String,
 }
 
-impl RedirectorProperties for LocationProps {
-    fn children(&self) -> &Children {
+impl RedirectorProperties for LocationProperties {
+    fn children(&self) -> &Html {
         &self.children
     }
 }

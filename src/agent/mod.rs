@@ -1,4 +1,4 @@
-//! The Yew agent, working in the background to manage the session and refresh tokens.
+//! The agent, working in the background to manage the session and refresh tokens.
 pub mod client;
 
 mod config;
@@ -42,6 +42,28 @@ use yew::Callback;
 /// # let url = Url::parse("https://example.com").unwrap();
 /// let opts = LoginOptions::default().with_redirect_url(url);
 /// ```
+///
+/// ## Redirect & Post login redirect
+///
+/// By default, the login process will ask the issuer to redirect back the page that was active when starting the login
+/// process. In some cases, the issuer might require a more strict set of redirect URLs, and so can only redirect back
+/// to a single page. This can be enabled set setting a specific URL as `redirect_url`.
+///
+/// Once the user comes back from the login flow, which might actually be without any user interaction if the session
+/// was still valid, the user might find himself on the redirect page. Therefore, it is possible to forward/redirect
+/// the back to the original page, but only after the issuer redirected back the `redirect_url`. If, while starting the
+/// login process, the currently active URL differs from the `redirect_url`, the agent will store the "current" URL and
+/// redirect to it once the login process has completed.
+///
+/// However, there can be different ways to redirect, and there is no common one. One might think just setting a new
+/// location in the browser should work, but that would actually cause a page reload, and would then start the login
+/// process again.
+///
+/// Therefore, it is possible to set a "post login redirect callback", which will be triggered in such cases. Letting
+/// the user of the crate implement this logic. Having the `yew-nested-router` feature enabled, it is possible to just
+/// call [`LoginOptions::with_nested_router_redirect`] and let the router take care of this.
+///
+/// **NOTE:** The default is to do nothing. So the user would simply end up on the page defined by `redirect_url`.
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct LoginOptions {
@@ -135,6 +157,7 @@ impl LogoutOptions {
     }
 }
 
+#[doc(hidden)]
 pub enum Msg<C>
 where
     C: Client,
@@ -145,6 +168,7 @@ where
     Refresh,
 }
 
+/// The agent handling the OAuth2/OIDC state
 #[derive(Clone, Debug)]
 pub struct Agent<C>
 where
@@ -170,6 +194,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct InnerAgent<C>
 where
     C: Client,
@@ -183,6 +208,7 @@ where
     timeout: Option<Timeout>,
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug)]
 pub struct InnerConfig {
     scopes: Vec<String>,

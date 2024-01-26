@@ -17,7 +17,7 @@ impl<R> Redirector for RouterRedirector<R>
 where
     R: Target + 'static,
 {
-    type Properties = RouterProps<R>;
+    type Properties = RouterProperties<R>;
 
     fn new<COMP: Component>(ctx: &Context<COMP>) -> Self {
         // while the "route" can change, the "router" itself does not.
@@ -43,21 +43,22 @@ where
     }
 }
 
+/// Properties for the [`RouterRedirector`] component.
 #[derive(Clone, Debug, PartialEq, Properties)]
-pub struct RouterProps<R>
+pub struct RouterProperties<R>
 where
     R: Target + 'static,
 {
     #[prop_or_default]
-    pub children: Children,
+    pub children: Html,
     pub logout: R,
 }
 
-impl<R> RedirectorProperties for RouterProps<R>
+impl<R> RedirectorProperties for RouterProperties<R>
 where
     R: Target + 'static,
 {
-    fn children(&self) -> &Children {
+    fn children(&self) -> &Html {
         &self.children
     }
 }
