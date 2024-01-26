@@ -1,7 +1,10 @@
 //! The [`UseAuthentication`] component
 
 use super::missing_context;
-use crate::context::{use_auth_state, Authentication, OAuth2Context};
+use crate::{
+    context::{Authentication, OAuth2Context},
+    hook::use_auth_state,
+};
 use std::rc::Rc;
 use yew::prelude::*;
 
