@@ -1,7 +1,7 @@
-pub const STORAGE_KEY_CSRF_TOKEN: &str = "ctron/oauth2/csrfToken";
-pub const STORAGE_KEY_LOGIN_STATE: &str = "ctron/oauth2/loginState";
-pub const STORAGE_KEY_REDIRECT_URL: &str = "ctron/oauth2/redirectUrl";
-pub const STORAGE_KEY_POST_LOGIN_URL: &str = "ctron/oauth2/postLoginUrl";
+pub(crate) const STORAGE_KEY_CSRF_TOKEN: &str = "ctron/oauth2/csrfToken";
+pub(crate) const STORAGE_KEY_LOGIN_STATE: &str = "ctron/oauth2/loginState";
+pub(crate) const STORAGE_KEY_REDIRECT_URL: &str = "ctron/oauth2/redirectUrl";
+pub(crate) const STORAGE_KEY_POST_LOGIN_URL: &str = "ctron/oauth2/postLoginUrl";
 
 #[derive(Debug)]
 pub struct State {
