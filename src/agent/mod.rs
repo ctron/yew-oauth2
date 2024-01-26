@@ -31,7 +31,7 @@ use yew::Callback;
 ///
 /// ## Non-exhaustive struct
 ///
-/// The struct is "non exhaustive", which means that it is possible to add fields without breaking the API.
+/// The struct is "non-exhaustive", which means that it is possible to add fields without breaking the API.
 ///
 /// In order to create an instance, follow the following pattern:
 ///
@@ -87,7 +87,7 @@ impl LoginOptions {
         self
     }
 
-    /// Use `yew-nested-route` history api for post-login redirect callback
+    /// Use `yew-nested-router` history api for post-login redirect callback
     #[cfg(feature = "yew-nested-router")]
     pub fn with_nested_router_redirect(mut self) -> Self {
         let callback = Callback::from(|url: String| {
