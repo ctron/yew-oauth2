@@ -28,15 +28,12 @@ pub enum AuthenticatedRoute {
 pub fn content() -> Html {
     let agent = use_auth_agent().expect("Requires OAuth2Context component in parent hierarchy");
 
-    let login = {
-        let agent = agent.clone();
-        Callback::from(move |_: MouseEvent| {
-            if let Err(err) = agent.start_login() {
-                log::warn!("Failed to start login: {err}");
-            }
-        })
-    };
-    let logout = Callback::from(move |_: MouseEvent| {
+    let login = use_callback(agent.clone(), |_, agent| {
+        if let Err(err) = agent.start_login() {
+            log::warn!("Failed to start login: {err}");
+        }
+    });
+    let logout = use_callback(agent, |_, agent| {
         if let Err(err) = agent.logout() {
             log::warn!("Failed to logout: {err}");
         }
@@ -119,26 +116,20 @@ pub fn content() -> Html {
 #[function_component(Application)]
 pub fn app() -> Html {
     #[cfg(not(feature = "openid"))]
-    let config = Config {
-        client_id: "example".into(),
-        auth_url: "http://localhost:8081/realms/master/protocol/openid-connect/auth".into(),
-        token_url: "http://localhost:8081/realms/master/protocol/openid-connect/token".into(),
-    };
+    let config = Config::new(
+        "example",
+        "http://localhost:8081/realms/master/protocol/openid-connect/auth",
+        "http://localhost:8081/realms/master/protocol/openid-connect/token",
+    );
 
     #[cfg(feature = "openid")]
-    let config = Config {
-        client_id: "example".into(),
-        issuer_url: "http://localhost:8081/realms/master".into(),
-        additional: Additional {
-            /*
-            Set the after logout URL to a public URL. Otherwise, the SSO server will redirect
-            back to the current page, which is detected as a new session, and will try to login
-            again, if the page requires this.
-            */
-            after_logout_url: Some("/".into()),
-            ..Default::default()
-        },
-    };
+    let config = Config::new("example", "http://localhost:8081/realms/master")
+        /*
+        Set the after logout URL to a public URL. Otherwise, the SSO server will redirect
+        back to the current page, which is detected as a new session, and will try to log in
+        again, if the page requires this.
+        */
+        .with_after_logout_url(Some("/".into()));
 
     let mode = if cfg!(feature = "openid") {
         "OpenID Connect"
