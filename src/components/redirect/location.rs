@@ -4,7 +4,7 @@ use super::{Redirect, Redirector, RedirectorProperties};
 use gloo_utils::window;
 use yew::prelude::*;
 
-/// A redirector using the browsers location.
+/// A redirector using the browser's location.
 pub struct LocationRedirector {}
 
 impl Redirector for LocationRedirector {
