@@ -50,32 +50,35 @@ use yew::Callback;
 /// to a single page. This can be enabled set setting a specific URL as `redirect_url`.
 ///
 /// Once the user comes back from the login flow, which might actually be without any user interaction if the session
-/// was still valid, the user might find himself on the redirect page. Therefore, it is advisable to forward/redirect
-/// the user back to the original page, after the issuer redirected back to the `redirect_url`. While this crate does
-/// provides some assistance, the actual implementation on how to redirect is left to the user of this crate.
-/// If, while starting the login process, the currently active URL differs from the `redirect_url`, the agent will store
-/// the "current" URL and pass it to the provided "post login redirect callback" once the login process has completed.
+/// was still valid, users might find themselves on the redirect page. Therefore, it is advisable to forward/redirect
+/// back to the original page, the one where the user left off.
+///
+/// While this crate does provide some assistance, the actual implementation on how to redirect is left to the user
+/// of this crate. If, while starting the login process, the currently active URL differs from the `redirect_url`,
+/// the agent will store the "current" URL and pass it to the provided "post login redirect callback" once the
+/// login process has completed.
 ///
 /// It could be argued, that the crate should just perform the redirect automatically, if no call back was provided.
 /// However, there can be different ways to redirect, and there is no common one. One might think just setting a new
 /// location in the browser should work, but that would actually cause a page reload, and would then start the login
-/// process again (since the tokens are only held in memory for security reasons).
+/// process again, since the tokens are only held in memory for security reasons. Also using the browser's History API
+/// won't work, as it does not notify listeners when pushing a new state.
 ///
 /// Therefore, it is necessary to set a "post login redirect callback", which will be triggered to handle the redirect,
-/// in order to allow the user of the crate to implement the needed logic.
-/// Having the `yew-nested-router` feature enabled, it is possible to just call [`LoginOptions::with_nested_router_redirect`]
-/// and let the router take care of this.
+/// in order to allow the user of the crate to implement the needed logic. Having the `yew-nested-router`
+/// feature enabled, it is possible to just call [`LoginOptions::with_nested_router_redirect`] and let the
+/// router take care of this.
 ///
-/// **NOTE:** As a summary, setting only the `redirect_url` will no be sufficient. The "psot login redirect callback" must
-/// be implemented or the `yew-nested-router`feature used. Otherwise the user would simply end up on the page defined by
-/// `redirect_url`, which in most cases would lead to a 404 page not found error.
+/// **NOTE:** As a summary, setting only the `redirect_url` will not be sufficient. The "post login redirect callback" must
+/// also be implemented or the `yew-nested-router`feature used. Otherwise, the user would simply end up on the page defined by
+/// `redirect_url`, which in most cases is not what one would expect.
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct LoginOptions {
     /// Additional query parameters sent to the issuer.
     pub query: HashMap<String, String>,
 
-    /// Defines the redirect URL.
+    /// Defines the redirect URL. See ["Redirect & Post login redirect"](#redirect--post-login-redirect) for more information.
     ///
     /// If this field is empty, the current URL is used as a redirect URL.
     pub redirect_url: Option<Url>,
