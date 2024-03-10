@@ -590,11 +590,6 @@ where
         let mut login_url = login_context.url;
 
         login_url.query_pairs_mut().extend_pairs(options.query);
-        if let Some(options) = &config.default_login_options {
-            login_url
-                .query_pairs_mut()
-                .extend_pairs(options.query.clone());
-        }
 
         // the next call will most likely navigate away from this page
 
