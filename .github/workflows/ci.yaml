@@ -16,8 +16,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # minimum version: because of "clap_lex"
-          - "1.71.1"
+          # minimum version: because of "bumpalo"
+          - "1.73.0"
 
     steps:
 
