@@ -12,6 +12,8 @@ pub enum OAuth2Error {
     StartLogin(String),
     /// Failed to handle login result
     LoginResult(String),
+    /// Failed to handle token refresh
+    Refresh(String),
     /// Failing storing information
     Storage(String),
     /// Internal error
@@ -25,6 +27,7 @@ impl Display for OAuth2Error {
             Self::Configuration(err) => write!(f, "configuration error: {err}"),
             Self::StartLogin(err) => write!(f, "start login error: {err}"),
             Self::LoginResult(err) => write!(f, "login result: {err}"),
+            Self::Refresh(err) => write!(f, "refresh error: {err}"),
             Self::Storage(err) => write!(f, "storage error: {err}"),
             Self::Internal(err) => write!(f, "internal error: {err}"),
         }

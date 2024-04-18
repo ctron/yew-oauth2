@@ -143,7 +143,7 @@ impl Client for OAuth2Client {
             .request_async(async_http_client)
             .await
             .map_err(|err| {
-                OAuth2Error::LoginResult(format!("failed to exchange refresh token: {err}"))
+                OAuth2Error::Refresh(format!("failed to exchange refresh token: {err}"))
             })?;
 
         Ok((Self::make_authenticated(result), session_state))
