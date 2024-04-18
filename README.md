@@ -10,11 +10,11 @@ Add to your `Cargo.toml`:
 yew-oauth2 = "0.10"
 ```
 
-By default, the `nested-router` integration for [`yew-nested-router`](https://github.com/ctron/yew-nested-router) is disabled,
-you can enable it using:
+By default, the `yew-nested-router` integration for [`yew-nested-router`](https://github.com/ctron/yew-nested-router) is
+disabled. You can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.10", features = ["nested-router"] }
+yew-oauth2 = { version = "0.10", features = ["yew-nested-router"] }
 ```
 
 ## OpenID Connect
@@ -23,7 +23,7 @@ OpenID Connect requires an additional dependency and can be enabled using the fe
 
 ## Examples
 
-A quick example how to use it (see below for more complete examples):
+A quick example of how to use it (see below for more complete examples):
 
 ```rust
 use yew::prelude::*;
@@ -32,13 +32,13 @@ use yew_oauth2::oauth2::*; // use `openid::*` when using OpenID connect
 
 #[function_component(MyApplication)]
 fn my_app() -> Html {
-  let config = Config::new(
-    "my-client",
-    "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth",
-    "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token"
-  );
+    let config = Config::new(
+        "my-client",
+        "https://my-sso/auth/realms/my-realm/protocol/openid-connect/auth",
+        "https://my-sso/auth/realms/my-realm/protocol/openid-connect/token"
+    );
 
-  html!(
+    html!(
     <OAuth2 {config}>
       <MyApplicationMain/>
     </OAuth2>
@@ -47,16 +47,16 @@ fn my_app() -> Html {
 
 #[function_component(MyApplicationMain)]
 fn my_app_main() -> Html {
-  let agent = use_auth_agent().expect("Must be nested inside an OAuth2 component");
+    let agent = use_auth_agent().expect("Must be nested inside an OAuth2 component");
 
-  let login = use_callback(agent.clone(), |_, agent| {
-    let _ = agent.start_login();
-  });
-  let logout = use_callback(agent, |_, agent| {
-    let _ = agent.logout();
-  });
+    let login = use_callback(agent.clone(), |_, agent| {
+        let _ = agent.start_login();
+    });
+    let logout = use_callback(agent, |_, agent| {
+        let _ = agent.logout();
+    });
 
-  html!(
+    html!(
     <>
       <Failure><FailureMessage/></Failure>
       <Authenticated>

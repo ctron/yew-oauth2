@@ -49,12 +49,12 @@ pub fn content() -> Html {
 
             /* We show the full menu structure here */
             <ul>
-                <li><Link<AppRoute> target={AppRoute::Index}> { "Public" } </Link<AppRoute>></li>
-                <li><Link<AppRoute> target={AppRoute::Authenticated(AuthenticatedRoute::Index)}> { "Authenticated" } </Link<AppRoute>>
+                <li><Link<AppRoute> to={AppRoute::Index}> { "Public" } </Link<AppRoute>></li>
+                <li><Link<AppRoute> to={AppRoute::Authenticated(AuthenticatedRoute::Index)}> { "Authenticated" } </Link<AppRoute>>
                     <ul>
-                        <li><Link<AppRoute> target={AppRoute::Authenticated(AuthenticatedRoute::Component)}> { "Component" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::Authenticated(AuthenticatedRoute::Function)}> { "Function" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::Authenticated(AuthenticatedRoute::UseAuthentication)}> { "Use" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Authenticated(AuthenticatedRoute::Component)}> { "Component" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Authenticated(AuthenticatedRoute::Function)}> { "Function" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Authenticated(AuthenticatedRoute::UseAuthentication)}> { "Use" } </Link<AppRoute>></li>
                     </ul>
                 </li>
             </ul>

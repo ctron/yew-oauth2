@@ -40,7 +40,7 @@ pub fn content() -> Html {
 
     #[cfg(feature = "openid")]
     let openid_routes = html! (
-        <li><Link<AppRoute> target={AppRoute::Identity}> { "Identity" } </Link<AppRoute>></li>
+        <li><Link<AppRoute> to={AppRoute::Identity}> { "Identity" } </Link<AppRoute>></li>
     );
     #[cfg(not(feature = "openid"))]
     let openid_routes = html!();
@@ -58,11 +58,11 @@ pub fn content() -> Html {
                         <button onclick={logout}>{ "Logout" }</button>
                     </p>
                     <ul>
-                        <li><Link<AppRoute> target={AppRoute::Index}> { "Index" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::Component}> { "Component" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::Function}> { "Function" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::UseAuthentication}> { "Use" } </Link<AppRoute>></li>
-                        <li><Link<AppRoute> target={AppRoute::UseLatestToken}> { "Latest Token" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Index}> { "Index" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Component}> { "Component" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::Function}> { "Function" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::UseAuthentication}> { "Use" } </Link<AppRoute>></li>
+                        <li><Link<AppRoute> to={AppRoute::UseLatestToken}> { "Latest Token" } </Link<AppRoute>></li>
                         { openid_routes }
                     </ul>
                     <Expiration/>
