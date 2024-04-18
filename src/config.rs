@@ -26,7 +26,7 @@ pub mod openid {
         /// The name of the query parameter for the post logout redirect.
         ///
         /// The defaults to `post_logout_redirect_uri` for OpenID RP initiated logout.
-        /// However, e.g. older Keycloak instances require this to be `redirect_uri`.
+        /// However, e.g. older Keycloak instances, require this to be `redirect_uri`.
         pub post_logout_redirect_name: Option<String>,
         /// Additional audiences of the ID token which are considered trustworthy.
         ///
