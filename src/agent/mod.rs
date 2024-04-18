@@ -510,6 +510,11 @@ where
             let result = client
                 .exchange_refresh_token(refresh_token.clone(), session_state)
                 .await;
+
+            if let Err(err) = &result {
+                log::warn!("Failed to refresh token: {err}");
+            }
+
             self.update_state_from_result(result);
         }
     }
