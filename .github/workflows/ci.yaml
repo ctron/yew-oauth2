@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  workflow_call:
+  # But don't trigger on tags, as they are covered by the "release.yaml" workflow
 
 jobs:
   check:
