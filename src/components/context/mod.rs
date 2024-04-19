@@ -28,6 +28,14 @@ pub struct OAuth2Properties<C: Client> {
     #[prop_or(Duration::from_secs(30))]
     pub grace_period: Duration,
 
+    /// A maximum expiration time.
+    ///
+    /// This can be used to limit the token timeout. If present, the token will be considered
+    /// expired at the provided expiration or the configured maximum expiration, whatever is
+    /// first.
+    #[prop_or_default]
+    pub max_expiration: Option<Duration>,
+
     // The audience to be associated to the access tokens inside this context
     #[prop_or_default]
     pub audience: Option<String>,
@@ -50,6 +58,8 @@ impl<C: Client> PartialEq for OAuth2Properties<C> {
         self.config == other.config
             && self.scopes == other.scopes
             && self.grace_period == other.grace_period
+            && self.max_expiration == other.max_expiration
+            && self.audience == other.audience
             && self.children == other.children
     }
 }
@@ -136,6 +146,7 @@ impl<C: Client> OAuth2<C> {
             config: props.config.clone(),
             scopes: props.scopes.clone(),
             grace_period: props.grace_period,
+            max_expiration: props.max_expiration,
             audience: props.audience.clone(),
             default_login_options: props.login_options.clone(),
             default_logout_options: props.logout_options.clone(),

@@ -22,7 +22,7 @@ use log::error;
 use num_traits::cast::ToPrimitive;
 use reqwest::Url;
 use state::*;
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{cmp::min, collections::HashMap, fmt::Debug, time::Duration};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
@@ -221,6 +221,7 @@ where
 pub struct InnerConfig {
     scopes: Vec<String>,
     grace_period: Duration,
+    max_expiration: Option<Duration>,
     audience: Option<String>,
     default_login_options: Option<LoginOptions>,
     default_logout_options: Option<LogoutOptions>,
@@ -290,8 +291,17 @@ where
                 .as_ref()
                 .map(|c| c.grace_period)
                 .unwrap_or_default();
+
+            let mut expires = *expires;
+            if let Some(max) = self.config.as_ref().and_then(|cfg| cfg.max_expiration) {
+                // cap time the token expires by "max"
+                expires = min(expires, max.as_secs());
+            }
+
+            // get now as seconds
             let now = Date::now() / 1000f64;
-            let diff = *expires as f64 - now - grace.as_secs_f64();
+            // get delta from now to expiration minus the grace period
+            let diff = expires as f64 - now - grace.as_secs_f64();
 
             let tx = self.tx.clone();
             if diff > 0f64 {
@@ -368,6 +378,7 @@ where
             audience,
             default_login_options,
             default_logout_options,
+            max_expiration,
         } = config;
 
         let client = C::from_config(config).await?;
@@ -378,6 +389,7 @@ where
             audience,
             default_login_options,
             default_logout_options,
+            max_expiration,
         };
 
         Ok((client, inner))
