@@ -1,4 +1,4 @@
-# OAuth2 component for Yew
+# OAuth2 (and OIDC) component for Yew
 
 [![crates.io](https://img.shields.io/crates/v/yew-oauth2.svg)](https://crates.io/crates/yew-oauth2)
 [![docs.rs](https://docs.rs/yew-oauth2/badge.svg)](https://docs.rs/yew-oauth2)
@@ -7,7 +7,7 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.10"
+yew-oauth2 = "0.11"
 ```
 
 By default, the `yew-nested-router` integration for [`yew-nested-router`](https://github.com/ctron/yew-nested-router) is
