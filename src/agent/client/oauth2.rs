@@ -8,14 +8,18 @@ use crate::{
 };
 use ::oauth2::{
     basic::{BasicClient, BasicTokenResponse},
-    reqwest::async_http_client,
     url::Url,
     AuthUrl, AuthorizationCode, ClientId, CsrfToken, PkceCodeChallenge, PkceCodeVerifier,
     RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
 };
+
+use ::oauth2::{EndpointNotSet, EndpointSet};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+
+type ExtendedBasicClient =
+    BasicClient<EndpointSet, EndpointNotSet, EndpointNotSet, EndpointNotSet, EndpointSet>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LoginState {
@@ -25,7 +29,8 @@ pub struct LoginState {
 /// An OAuth2 based client implementation
 #[derive(Clone, Debug)]
 pub struct OAuth2Client {
-    client: BasicClient,
+    client: ExtendedBasicClient,
+    http_client: reqwest::Client,
 }
 
 impl OAuth2Client {
@@ -54,19 +59,19 @@ impl Client for OAuth2Client {
             token_url,
         } = config;
 
-        let client = BasicClient::new(
-            ClientId::new(client_id),
-            None,
-            AuthUrl::new(auth_url)
-                .map_err(|err| OAuth2Error::Configuration(format!("invalid auth URL: {err}")))?,
-            Some(
-                TokenUrl::new(token_url).map_err(|err| {
+        let client =
+            BasicClient::new(ClientId::new(client_id))
+                .set_auth_uri(AuthUrl::new(auth_url).map_err(|err| {
+                    OAuth2Error::Configuration(format!("invalid auth URL: {err}"))
+                })?)
+                .set_token_uri(TokenUrl::new(token_url).map_err(|err| {
                     OAuth2Error::Configuration(format!("invalid token URL: {err}"))
-                })?,
-            ),
-        );
+                })?);
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            http_client: reqwest::Client::new(),
+        })
     }
 
     fn set_redirect_uri(mut self, url: Url) -> Self {
@@ -123,7 +128,7 @@ impl Client for OAuth2Client {
             .client
             .exchange_code(AuthorizationCode::new(code))
             .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
 
@@ -140,7 +145,7 @@ impl Client for OAuth2Client {
         let result = self
             .client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Refresh(format!("failed to exchange refresh token: {err}"))
