@@ -91,6 +91,16 @@ pub struct LoginOptions {
     ///
     /// If `None`, disables post-login redirect.
     pub post_login_redirect_callback: Option<Callback<String>>,
+
+    /// Configures the window in which the login is performed.
+    ///
+    /// By default (`false`), performing a login opens the login screen (or redirect) in the same
+    /// window, with the expectation that the [`.redirect_url`][Self::redirect_url] returns to the
+    /// page.
+    ///
+    /// If set (`true`), the login is opened in a new window, with the expectation that the
+    /// redirect URL sends a message back to this window and eventually closes itself.
+    pub new_window: bool,
 }
 
 impl LoginOptions {
@@ -126,6 +136,14 @@ impl LoginOptions {
     pub fn with_redirect_callback(mut self, redirect_callback: Callback<String>) -> Self {
         self.post_login_redirect_callback = Some(redirect_callback);
         self
+    }
+
+    /// Make the login open in a new window.
+    pub fn with_new_window(self) -> Self {
+        Self {
+            new_window: true,
+            ..self
+        }
     }
 
     /// Use `yew-nested-router` History API for post-login redirect callback
@@ -610,15 +628,19 @@ where
 
         // the next call will most likely navigate away from this page
 
-        window()
-            .location()
-            .set_href(login_url.as_str())
-            .map_err(|err| {
-                OAuth2Error::StartLogin(
-                    err.as_string()
-                        .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
-                )
-            })?;
+        if options.new_window {
+            window()
+                .open_with_url_and_target(login_url.as_str(), "_blank")
+                .map(|_win| ())
+        } else {
+            window().location().set_href(login_url.as_str())
+        }
+        .map_err(|err| {
+            OAuth2Error::StartLogin(
+                err.as_string()
+                    .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
+            )
+        })?;
 
         Ok(())
     }
