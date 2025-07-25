@@ -32,6 +32,8 @@ pub mod openid {
         ///
         /// Those audiences are allowed in addition to the client ID.
         pub additional_trusted_audiences: Vec<String>,
+        /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
+        pub require_issuer_match: bool,
     }
 
     impl Config {
@@ -45,6 +47,7 @@ pub mod openid {
                 after_logout_url: None,
                 post_logout_redirect_name: None,
                 additional_trusted_audiences: vec![],
+                require_issuer_match: true,
             }
         }
 
@@ -98,6 +101,12 @@ pub mod openid {
         ) -> Self {
             self.additional_trusted_audiences
                 .push(additional_trusted_audience.into());
+            self
+        }
+
+        /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
+        pub fn with_require_issuer_match(mut self, require_issuer_match: bool) -> Self {
+            self.require_issuer_match = require_issuer_match;
             self
         }
     }
