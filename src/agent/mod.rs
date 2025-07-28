@@ -307,7 +307,7 @@ where
             if diff > 0f64 {
                 // while the API says millis is u32, internally it is i32
                 let millis = (diff * 1000f64).to_i32().unwrap_or(i32::MAX);
-                log::debug!("Starting timeout for: {}ms", millis);
+                log::debug!("Starting timeout for: {millis}ms",);
                 self.timeout = Some(Timeout::new(millis as u32, move || {
                     let _ = tx.try_send(Msg::Refresh);
                 }));
@@ -409,7 +409,7 @@ where
             return Ok(false);
         };
 
-        log::debug!("Found state: {:?}", state);
+        log::debug!("Found state: {state:?}",);
 
         if let Some(error) = state.error {
             log::info!("Login error from server: {error}");
