@@ -9,7 +9,7 @@ repository = "https://github.com/ctron/yew-oauth2"
 categories = ["wasm", "web-programming", "gui"]
 keywords = ["yew", "oauth2", "oidc", "web", "html"]
 readme = "README.md"
-rust-version = "1.82.0"
+rust-version = "1.70"
 
 [dependencies]
 async-trait = "0.1"

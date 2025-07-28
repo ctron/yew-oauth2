@@ -18,8 +18,8 @@ jobs:
       matrix:
         toolchain:
           - stable
-          # minimum version: because of "bumpalo"
-          - "1.82.0"
+          # minimum version: because of rust edition 2024 dependencies
+          - "1.85.0"
 
     steps:
 
