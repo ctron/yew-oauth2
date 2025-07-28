@@ -46,6 +46,8 @@ pub struct OpenIdClient {
     post_logout_redirect_name: Option<String>,
     /// Additional audiences of the ID token which are considered trustworthy
     additional_trusted_audiences: Vec<String>,
+    /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
+    pub require_issuer_match: bool,
 }
 
 /// Additional metadata read from the discovery endpoint
@@ -93,6 +95,7 @@ impl Client for OpenIdClient {
             after_logout_url,
             post_logout_redirect_name,
             additional_trusted_audiences,
+            require_issuer_match,
         } = config;
 
         let issuer = IssuerUrl::new(issuer_url)
@@ -120,6 +123,7 @@ impl Client for OpenIdClient {
             after_logout_url,
             post_logout_redirect_name,
             additional_trusted_audiences,
+            require_issuer_match,
         })
     }
 
@@ -194,6 +198,7 @@ impl Client for OpenIdClient {
                     &self
                         .client
                         .id_token_verifier()
+                        .require_issuer_match(self.require_issuer_match)
                         .set_other_audience_verifier_fn(|aud| {
                             self.additional_trusted_audiences.contains(aud)
                         }),
