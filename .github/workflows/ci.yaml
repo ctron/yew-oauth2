@@ -19,7 +19,7 @@ jobs:
         toolchain:
           - stable
           # minimum version: because of "bumpalo"
-          - "1.73.0"
+          - "1.82.0"
 
     steps:
 
