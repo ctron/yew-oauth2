@@ -8,22 +8,29 @@ use crate::{
 };
 use async_trait::async_trait;
 use gloo_utils::window;
-use oauth2::TokenResponse;
+use oauth2::{EndpointMaybeSet, EndpointNotSet, EndpointSet, TokenResponse};
 use openidconnect::{
     core::{
         CoreAuthDisplay, CoreAuthenticationFlow, CoreClaimName, CoreClaimType, CoreClient,
-        CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey, CoreJsonWebKeyType,
-        CoreJsonWebKeyUse, CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm,
-        CoreJwsSigningAlgorithm, CoreResponseMode, CoreResponseType, CoreSubjectIdentifierType,
-        CoreTokenResponse,
+        CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey,
+        CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm, CoreResponseMode,
+        CoreResponseType, CoreSubjectIdentifierType, CoreTokenResponse,
     },
-    reqwest::async_http_client,
     AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, IdTokenClaims, IssuerUrl, Nonce,
     PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
 };
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, rc::Rc};
+
+type ExtendedCoreClient = CoreClient<
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointMaybeSet,
+    EndpointMaybeSet,
+>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenIdLoginState {
@@ -37,7 +44,7 @@ const DEFAULT_POST_LOGOUT_DIRECT_NAME: &str = "post_logout_redirect_uri";
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
     /// The client
-    client: CoreClient,
+    client: ExtendedCoreClient,
     /// An override for the URL to end the session (logout)
     end_session_url: Option<Url>,
     /// A URL to direct to after the logout was performed
@@ -46,6 +53,7 @@ pub struct OpenIdClient {
     post_logout_redirect_name: Option<String>,
     /// Additional audiences of the ID token which are considered trustworthy
     additional_trusted_audiences: Vec<String>,
+    http_client: reqwest::Client,
 }
 
 /// Additional metadata read from the discovery endpoint
@@ -66,9 +74,6 @@ pub type ExtendedProviderMetadata = ProviderMetadata<
     CoreGrantType,
     CoreJweContentEncryptionAlgorithm,
     CoreJweKeyManagementAlgorithm,
-    CoreJwsSigningAlgorithm,
-    CoreJsonWebKeyType,
-    CoreJsonWebKeyUse,
     CoreJsonWebKey,
     CoreResponseMode,
     CoreResponseType,
@@ -95,10 +100,12 @@ impl Client for OpenIdClient {
             additional_trusted_audiences,
         } = config;
 
+        let http_client = reqwest::Client::new();
+
         let issuer = IssuerUrl::new(issuer_url)
             .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
 
-        let metadata = ExtendedProviderMetadata::discover_async(issuer, async_http_client)
+        let metadata = ExtendedProviderMetadata::discover_async(issuer, &http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
@@ -120,6 +127,7 @@ impl Client for OpenIdClient {
             after_logout_url,
             post_logout_redirect_name,
             additional_trusted_audiences,
+            http_client,
         })
     }
 
@@ -176,8 +184,9 @@ impl Client for OpenIdClient {
         let result = self
             .client
             .exchange_code(AuthorizationCode::new(code))
+            .map_err(|err| OAuth2Error::Configuration(format!("failed to exchange code: {err}")))?
             .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
 
@@ -223,7 +232,10 @@ impl Client for OpenIdClient {
         let result = self
             .client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("failed to exchange refresh token: {err}"))
+            })?
+            .request_async(&self.http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Refresh(format!("failed to exchange refresh token: {err}"))
