@@ -12,14 +12,13 @@ use oauth2::TokenResponse;
 use openidconnect::{
     core::{
         CoreAuthDisplay, CoreAuthenticationFlow, CoreClaimName, CoreClaimType, CoreClient,
-        CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey, CoreJsonWebKeyType,
-        CoreJsonWebKeyUse, CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm,
-        CoreJwsSigningAlgorithm, CoreResponseMode, CoreResponseType, CoreSubjectIdentifierType,
-        CoreTokenResponse,
+        CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey,
+        CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm, CoreResponseMode,
+        CoreResponseType, CoreSubjectIdentifierType, CoreTokenResponse,
     },
-    reqwest::async_http_client,
-    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, IdTokenClaims, IssuerUrl, Nonce,
-    PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
+    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet,
+    EndpointNotSet, EndpointSet, IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge,
+    PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
 };
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -36,8 +35,10 @@ const DEFAULT_POST_LOGOUT_DIRECT_NAME: &str = "post_logout_redirect_uri";
 /// An OpenID Connect based client implementation
 #[derive(Clone, Debug)]
 pub struct OpenIdClient {
+    /// The http clietn
+    http_client: openidconnect::reqwest::Client,
     /// The client
-    client: CoreClient,
+    client: ExtendedClient,
     /// An override for the URL to end the session (logout)
     end_session_url: Option<Url>,
     /// A URL to direct to after the logout was performed
@@ -68,13 +69,19 @@ pub type ExtendedProviderMetadata = ProviderMetadata<
     CoreGrantType,
     CoreJweContentEncryptionAlgorithm,
     CoreJweKeyManagementAlgorithm,
-    CoreJwsSigningAlgorithm,
-    CoreJsonWebKeyType,
-    CoreJsonWebKeyUse,
     CoreJsonWebKey,
     CoreResponseMode,
     CoreResponseType,
     CoreSubjectIdentifierType,
+>;
+
+pub type ExtendedClient = CoreClient<
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointSet,
+    EndpointMaybeSet,
 >;
 
 #[async_trait(? Send)]
@@ -98,14 +105,32 @@ impl Client for OpenIdClient {
             require_issuer_match,
         } = config;
 
+        let http_client = openidconnect::reqwest::ClientBuilder::new()
+            // Following redirects opens the client up to SSRF vulnerabilities.
+            // .redirect(openidconnect::reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Failed to build HTTP client: {err}"))
+            })?;
+
         let issuer = IssuerUrl::new(issuer_url)
             .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
 
-        let metadata = ExtendedProviderMetadata::discover_async(issuer, async_http_client)
+        let metadata = ExtendedProviderMetadata::discover_async(issuer, &http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
             })?;
+
+        // Extract the URIs we MUST have
+        let auth_uri = metadata.authorization_endpoint().clone();
+
+        let token_uri = metadata
+            .token_endpoint()
+            .ok_or_else(|| {
+                OAuth2Error::Configuration("Provider missing required token endpoint".into())
+            })?
+            .clone();
 
         let end_session_url = end_session_url
             .map(|url| Url::parse(&url))
@@ -115,9 +140,12 @@ impl Client for OpenIdClient {
             })?
             .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
 
-        let client = CoreClient::from_provider_metadata(metadata, ClientId::new(client_id), None);
+        let client = CoreClient::from_provider_metadata(metadata, ClientId::new(client_id), None)
+            .set_auth_uri(auth_uri)
+            .set_token_uri(token_uri);
 
         Ok(Self {
+            http_client,
             client,
             end_session_url,
             after_logout_url,
@@ -181,7 +209,7 @@ impl Client for OpenIdClient {
             .client
             .exchange_code(AuthorizationCode::new(code))
             .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|err| OAuth2Error::LoginResult(format!("failed to exchange code: {err}")))?;
 
@@ -228,7 +256,7 @@ impl Client for OpenIdClient {
         let result = self
             .client
             .exchange_refresh_token(&RefreshToken::new(refresh_token))
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|err| {
                 OAuth2Error::Refresh(format!("failed to exchange refresh token: {err}"))
