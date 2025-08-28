@@ -19,6 +19,15 @@ pub mod openid {
         pub client_id: String,
         /// The OpenID connect issuer URL.
         pub issuer_url: String,
+        /// If the following urls are set, the client will be built from them
+        /// The OpenID connect auth URL.
+        pub auth_url: Option<String>,
+        /// The OpenID token auth URL.
+        pub token_url: Option<String>,
+        /// The OpenID user info auth URL.
+        pub user_info_url: Option<String>,
+        /// The OpenID jwks url.
+        pub jwks_url: Option<String>,
         /// An override for the end session URL.
         pub end_session_url: Option<String>,
         /// The URL to navigate to after the logout has been completed.
@@ -42,6 +51,11 @@ pub mod openid {
             Self {
                 client_id: client_id.into(),
                 issuer_url: issuer_url.into(),
+
+                auth_url: None,
+                token_url: None,
+                user_info_url: None,
+                jwks_url: None,
 
                 end_session_url: None,
                 after_logout_url: None,
@@ -107,6 +121,28 @@ pub mod openid {
         /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
         pub fn with_require_issuer_match(mut self, require_issuer_match: bool) -> Self {
             self.require_issuer_match = require_issuer_match;
+            self
+        }
+
+        /// Set the provider auth url, skip metadata
+        pub fn with_auth_url(mut self, auth_url: impl Into<String>) -> Self {
+            self.auth_url = Some(auth_url.into());
+            self
+        }
+
+        /// Set the provider token url, skip metadata
+        pub fn with_token_url(mut self, token_url: impl Into<String>) -> Self {
+            self.token_url = Some(token_url.into());
+            self
+        }
+        /// Set the provider user_info url, skip metadata
+        pub fn with_user_info_url(mut self, user_info_url: impl Into<String>) -> Self {
+            self.user_info_url = Some(user_info_url.into());
+            self
+        }
+        /// Set the provider jwks url, skip metadata
+        pub fn with_jwks_url(mut self, jwks_url: impl Into<String>) -> Self {
+            self.jwks_url = Some(jwks_url.into());
             self
         }
     }
