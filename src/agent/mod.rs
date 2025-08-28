@@ -91,6 +91,16 @@ pub struct LoginOptions {
     ///
     /// If `None`, disables post-login redirect.
     pub post_login_redirect_callback: Option<Callback<String>>,
+
+    /// Configures the window in which the login is performed.
+    ///
+    /// By default (`false`), performing a login opens the login screen (or redirect) in the same
+    /// window, with the expectation that the [`.redirect_url`][Self::redirect_url] returns to the
+    /// page.
+    ///
+    /// If set (`true`), the login is opened in a new window, with the expectation that the
+    /// redirect URL sends a message back to this window and eventually closes itself.
+    pub new_window: bool,
 }
 
 impl LoginOptions {
@@ -126,6 +136,14 @@ impl LoginOptions {
     pub fn with_redirect_callback(mut self, redirect_callback: Callback<String>) -> Self {
         self.post_login_redirect_callback = Some(redirect_callback);
         self
+    }
+
+    /// Make the login open in a new window.
+    pub fn with_new_window(self) -> Self {
+        Self {
+            new_window: true,
+            ..self
+        }
     }
 
     /// Use `yew-nested-router` History API for post-login redirect callback
@@ -173,6 +191,7 @@ where
     Configure(AgentConfiguration<C>),
     StartLogin(Option<LoginOptions>),
     Logout(Option<LogoutOptions>),
+    ReceiveRedirectedUrl(String),
     Refresh,
 }
 
@@ -199,6 +218,16 @@ where
         inner.spawn(rx);
 
         Self { tx }
+    }
+
+    pub fn feed_full_redirected(&self, url: &str) {
+        if self
+            .tx
+            .try_send(Msg::ReceiveRedirectedUrl(url.to_string()))
+            .is_err()
+        {
+            log::error!("Event queue overflow, discarding login result.");
+        }
     }
 }
 
@@ -274,6 +303,12 @@ where
                 }
             }
             Msg::Logout(logout) => self.logout_opts(logout),
+            Msg::ReceiveRedirectedUrl(url) => {
+                if let Err(e) = self.feed_full_redirected(&url).await {
+                    // FIXME: need to report this somehow
+                    log::info!("Failed to process query: {:?}", e);
+                }
+            }
             Msg::Refresh => self.refresh().await,
         }
     }
@@ -395,19 +430,44 @@ where
         Ok((client, inner))
     }
 
+    /// Process a OAuth response that did not arrive via the query (as is processed in
+    /// detect_state) but passed through some other mechanism (eg. from a popup login)
+    async fn feed_full_redirected(&mut self, url: &str) -> Result<(), OAuth2Error> {
+        let url = Url::parse(url).map_err(|err| OAuth2Error::LoginResult(err.to_string()))?;
+        let query: HashMap<_, _> = url.query_pairs().collect();
+
+        let state = State {
+            code: query.get("code").map(ToString::to_string),
+            state: query.get("state").map(ToString::to_string),
+            error: query.get("error").map(ToString::to_string),
+        };
+
+        self.process_state(state).await.map(|_| ())
+    }
+
     /// When initializing, try to detect the state from the URL and session state.
     ///
     /// Returns `false` if there is no authentication state found and the result is final.
     /// Otherwise, it returns `true` and spawns a request for e.g. a code exchange.
     async fn detect_state(&mut self) -> Result<bool, OAuth2Error> {
-        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
-
         let state = if let Some(state) = Self::find_query_state() {
             state
         } else {
             // unable to get location and query
             return Ok(false);
         };
+
+        self.process_state(state).await
+    }
+
+    /// Take state from any source (local URI when called from [`Self::detect_state`], or other
+    /// source when called from [`Self::feed_full_redirected`]) and if successful, spawn requests
+    /// from there, e.g. a code exchange.
+    ///
+    /// Returns `false` if there is no authentication state found and the result is final.
+    /// Otherwise, it returns `true`.
+    async fn process_state(&mut self, state: State) -> Result<bool, OAuth2Error> {
+        let client = self.client.as_ref().ok_or(OAuth2Error::NotInitialized)?;
 
         log::debug!("Found state: {:?}", state);
 
@@ -610,15 +670,19 @@ where
 
         // the next call will most likely navigate away from this page
 
-        window()
-            .location()
-            .set_href(login_url.as_str())
-            .map_err(|err| {
-                OAuth2Error::StartLogin(
-                    err.as_string()
-                        .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
-                )
-            })?;
+        if options.new_window {
+            window()
+                .open_with_url_and_target(login_url.as_str(), "_blank")
+                .map(|_win| ())
+        } else {
+            window().location().set_href(login_url.as_str())
+        }
+        .map_err(|err| {
+            OAuth2Error::StartLogin(
+                err.as_string()
+                    .unwrap_or_else(|| "Unable to navigate to login page".to_string()),
+            )
+        })?;
 
         Ok(())
     }
