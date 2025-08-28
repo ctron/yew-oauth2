@@ -8,11 +8,12 @@ use crate::{
 };
 use async_trait::async_trait;
 use gloo_utils::window;
-use oauth2::TokenResponse;
+use oauth2::TokenResponse as _;
 use openidconnect::{
-    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet,
-    EndpointNotSet, EndpointSet, IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge,
-    PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
+    AuthUrl, AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EndpointNotSet,
+    EndpointSet, IdTokenClaims, IssuerUrl, JsonWebKeySet, JsonWebKeySetUrl, Nonce,
+    PkceCodeChallenge, PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
+    TokenResponse, TokenUrl, UserInfoUrl,
     core::{
         CoreAuthDisplay, CoreAuthenticationFlow, CoreClaimName, CoreClaimType, CoreClient,
         CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey,
@@ -81,7 +82,7 @@ pub type ExtendedClient = CoreClient<
     EndpointNotSet,
     EndpointNotSet,
     EndpointSet,
-    EndpointMaybeSet,
+    EndpointSet,
 >;
 
 #[async_trait(? Send)]
@@ -95,63 +96,21 @@ impl Client for OpenIdClient {
     );
 
     async fn from_config(config: Self::Configuration) -> Result<Self, OAuth2Error> {
-        let openid::Config {
-            client_id,
-            issuer_url,
-            end_session_url,
-            after_logout_url,
-            post_logout_redirect_name,
-            additional_trusted_audiences,
-            require_issuer_match,
-        } = config;
-
-        let http_client = openidconnect::reqwest::ClientBuilder::new()
-            // we can't control redirect here, as we're using WASM request, which basically is the browser
-            .build()
-            .map_err(|err| {
-                OAuth2Error::Configuration(format!("Failed to build HTTP client: {err}"))
-            })?;
-
-        let issuer = IssuerUrl::new(issuer_url)
-            .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
-
-        let metadata = ExtendedProviderMetadata::discover_async(issuer, &http_client)
-            .await
-            .map_err(|err| {
-                OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
-            })?;
-
-        // Extract the URIs we MUST have
-        let auth_uri = metadata.authorization_endpoint().clone();
-
-        let token_uri = metadata
-            .token_endpoint()
-            .ok_or_else(|| {
-                OAuth2Error::Configuration("Provider missing required token endpoint".into())
-            })?
-            .clone();
-
-        let end_session_url = end_session_url
-            .map(|url| Url::parse(&url))
-            .transpose()
-            .map_err(|err| {
-                OAuth2Error::Configuration(format!("Unable to parse end_session_url: {err}"))
-            })?
-            .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
-
-        let client = CoreClient::from_provider_metadata(metadata, ClientId::new(client_id), None)
-            .set_auth_uri(auth_uri)
-            .set_token_uri(token_uri);
-
-        Ok(Self {
-            http_client,
-            client,
-            end_session_url,
-            after_logout_url,
-            post_logout_redirect_name,
-            additional_trusted_audiences,
-            require_issuer_match,
-        })
+        match (
+            &config.jwks_url,
+            &config.auth_url,
+            &config.token_url,
+            &config.user_info_url,
+        ) {
+            (Some(_), Some(_), Some(_), Some(_)) => {
+                log::debug!("Constructing client from feeded urls");
+                Self::from_urls(config).await
+            }
+            _ => {
+                log::debug!("Constructing client from provider metadata");
+                Self::from_metadata(config).await
+            }
+        }
     }
 
     fn set_redirect_uri(mut self, url: Url) -> Self {
@@ -239,6 +198,7 @@ impl Client for OpenIdClient {
         Ok((
             OAuth2Context::Authenticated(Authentication {
                 access_token: result.access_token().secret().to_string(),
+                id_token: result.id_token().map(|t| t.to_string()),
                 refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
                 expires: expires(result.expires_in()),
                 claims: Some(claims.clone()),
@@ -264,6 +224,7 @@ impl Client for OpenIdClient {
         Ok((
             OAuth2Context::Authenticated(Authentication {
                 access_token: result.access_token().secret().to_string(),
+                id_token: result.id_token().map(|t| t.to_string()),
                 refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
                 expires: expires(result.expires_in()),
                 claims: Some(session_state.1.clone()),
@@ -322,5 +283,167 @@ impl OpenIdClient {
         } else {
             window().location().href().ok()
         }
+    }
+    async fn from_metadata(config: openid::Config) -> Result<Self, OAuth2Error> {
+        let openid::Config {
+            client_id,
+            issuer_url,
+            end_session_url,
+            after_logout_url,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
+            require_issuer_match,
+            ..
+        } = config;
+
+        let http_client = openidconnect::reqwest::ClientBuilder::new()
+            // we can't control redirect here, as we're using WASM request, which basically is the browser
+            .build()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Failed to build HTTP client: {err}"))
+            })?;
+
+        let issuer = IssuerUrl::new(issuer_url)
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
+
+        let metadata = ExtendedProviderMetadata::discover_async(issuer, &http_client)
+            .await
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Failed to discover client: {err}"))
+            })?;
+
+        // Extract the URIs we MUST have
+        let auth_uri = metadata.authorization_endpoint().clone();
+
+        let token_uri = metadata
+            .token_endpoint()
+            .ok_or_else(|| {
+                OAuth2Error::Configuration("Provider missing required token endpoint".into())
+            })?
+            .clone();
+
+        let user_info_uri = metadata
+            .userinfo_endpoint()
+            .ok_or_else(|| {
+                OAuth2Error::Configuration("Provider missing required auth info endpoint".into())
+            })?
+            .clone();
+
+        let end_session_url = end_session_url
+            .map(|url| Url::parse(&url))
+            .transpose()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Unable to parse end_session_url: {err}"))
+            })?
+            .or_else(|| metadata.additional_metadata().end_session_endpoint.clone());
+
+        let client = CoreClient::from_provider_metadata(metadata, ClientId::new(client_id), None)
+            .set_auth_uri(auth_uri)
+            .set_token_uri(token_uri)
+            .set_user_info_url(user_info_uri);
+        Ok(Self {
+            http_client,
+            client,
+            end_session_url,
+            after_logout_url,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
+            require_issuer_match,
+        })
+    }
+
+    async fn from_urls(config: openid::Config) -> Result<Self, OAuth2Error> {
+        let openid::Config {
+            client_id,
+            issuer_url,
+            end_session_url,
+            after_logout_url,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
+            require_issuer_match,
+            jwks_url,
+            auth_url,
+            token_url,
+            user_info_url,
+        } = config;
+
+        let http_client = openidconnect::reqwest::ClientBuilder::new()
+            // Following redirects opens the client up to SSRF vulnerabilities.
+            // .redirect(openidconnect::reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Failed to build HTTP client: {err}"))
+            })?;
+
+        let issuer = IssuerUrl::new(issuer_url)
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid issuer URL: {err}")))?;
+
+        let auth_uri = auth_url
+            .map(AuthUrl::new)
+            .transpose()
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid auth URL: {err}")))?
+            .ok_or_else(|| {
+                OAuth2Error::Configuration(
+                    "Cannot build Auth2 client without metadata: missing auth url".to_string(),
+                )
+            })?;
+
+        let token_uri = token_url
+            .map(TokenUrl::new)
+            .transpose()
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid token URL: {err}")))?
+            .ok_or_else(|| {
+                OAuth2Error::Configuration(
+                    "Cannot build Auth2 client without metadata: missing token url".to_string(),
+                )
+            })?;
+
+        let jwks_uri = jwks_url
+            .map(JsonWebKeySetUrl::new)
+            .transpose()
+            .map_err(|err| OAuth2Error::Configuration(format!("invalid jwks URL: {err}")))?
+            .ok_or_else(|| {
+                OAuth2Error::Configuration(
+                    "Cannot build Auth2 client without metadata: missing jwks url".to_string(),
+                )
+            })?;
+
+        let jwks = JsonWebKeySet::fetch_async(&jwks_uri, &http_client)
+            .await
+            .map_err(|err| OAuth2Error::Configuration(format!("Could not fetch jwks: {err}")))?;
+
+        let user_info_url = user_info_url
+            .map(UserInfoUrl::new)
+            .transpose()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Unable to parse user_info_url: {err}"))
+            })?
+            .ok_or_else(|| {
+                OAuth2Error::Configuration(
+                    "Cannot build Auth2 client without metadata: missing user_info url".to_string(),
+                )
+            })?;
+
+        let end_session_url = end_session_url
+            .map(|url| Url::parse(&url))
+            .transpose()
+            .map_err(|err| {
+                OAuth2Error::Configuration(format!("Unable to parse end_session_url: {err}"))
+            })?;
+
+        let client = CoreClient::new(ClientId::new(client_id), issuer, jwks)
+            .set_auth_uri(auth_uri)
+            .set_token_uri(token_uri)
+            .set_user_info_url(user_info_url);
+
+        Ok(Self {
+            http_client,
+            client,
+            end_session_url,
+            after_logout_url,
+            post_logout_redirect_name,
+            additional_trusted_audiences,
+            require_issuer_match,
+        })
     }
 }

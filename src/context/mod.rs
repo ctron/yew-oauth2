@@ -18,6 +18,8 @@ pub type Claims = openidconnect::IdTokenClaims<
 pub struct Authentication {
     /// The access token
     pub access_token: String,
+    /// The id token
+    pub id_token: Option<String>,
     /// An optional refresh token
     pub refresh_token: Option<String>,
     /// OpenID claims
@@ -59,6 +61,12 @@ impl OAuth2Context {
     /// Get the access token, if the context is [`OAuth2Context::Authenticated`]
     pub fn access_token(&self) -> Option<&str> {
         self.authentication().map(|auth| auth.access_token.as_str())
+    }
+
+    /// Get the id token, if the context is [`OAuth2Context::Authenticated`]
+    pub fn id_token(&self) -> Option<&str> {
+        self.authentication()
+            .and_then(|auth| auth.id_token.as_deref())
     }
 
     /// Get the claims, if the context is [`OAuth2Context::Authenticated`]

@@ -33,6 +33,7 @@ impl OAuth2Client {
     fn make_authenticated(result: BasicTokenResponse) -> OAuth2Context {
         OAuth2Context::Authenticated(Authentication {
             access_token: result.access_token().secret().to_string(),
+            id_token: None,
             refresh_token: result.refresh_token().map(|t| t.secret().to_string()),
             expires: expires(result.expires_in()),
             #[cfg(feature = "openid")]
