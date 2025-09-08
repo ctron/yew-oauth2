@@ -16,7 +16,7 @@ use async_trait::async_trait;
 use js_sys::Date;
 use num_traits::ToPrimitive;
 use reqwest::Url;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::fmt::Debug;
 use std::time::Duration;
 

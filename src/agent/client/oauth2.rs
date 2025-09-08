@@ -1,17 +1,17 @@
 use crate::{
     agent::{
-        client::{expires, Client, LoginContext},
         InnerConfig, OAuth2Error,
+        client::{Client, LoginContext, expires},
     },
     config::oauth2,
     context::{Authentication, OAuth2Context},
 };
 use ::oauth2::{
+    AuthUrl, AuthorizationCode, ClientId, CsrfToken, EndpointNotSet, EndpointSet,
+    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
     basic::{BasicClient, BasicTokenResponse},
     reqwest,
     url::Url,
-    AuthUrl, AuthorizationCode, ClientId, CsrfToken, EndpointNotSet, EndpointSet,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, Scope, TokenResponse, TokenUrl,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

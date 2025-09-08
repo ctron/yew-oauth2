@@ -1,7 +1,7 @@
 use crate::{
     agent::{
-        client::{expires, Client, LoginContext},
         InnerConfig, LogoutOptions, OAuth2Error,
+        client::{Client, LoginContext, expires},
     },
     config::openid,
     context::{Authentication, OAuth2Context},
@@ -10,15 +10,15 @@ use async_trait::async_trait;
 use gloo_utils::window;
 use oauth2::TokenResponse;
 use openidconnect::{
+    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet,
+    EndpointNotSet, EndpointSet, IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge,
+    PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
     core::{
         CoreAuthDisplay, CoreAuthenticationFlow, CoreClaimName, CoreClaimType, CoreClient,
         CoreClientAuthMethod, CoreGenderClaim, CoreGrantType, CoreJsonWebKey,
         CoreJweContentEncryptionAlgorithm, CoreJweKeyManagementAlgorithm, CoreResponseMode,
         CoreResponseType, CoreSubjectIdentifierType, CoreTokenResponse,
     },
-    AuthorizationCode, ClientId, CsrfToken, EmptyAdditionalClaims, EndpointMaybeSet,
-    EndpointNotSet, EndpointSet, IdTokenClaims, IssuerUrl, Nonce, PkceCodeChallenge,
-    PkceCodeVerifier, ProviderMetadata, RedirectUrl, RefreshToken, Scope,
 };
 use reqwest::Url;
 use serde::{Deserialize, Serialize};

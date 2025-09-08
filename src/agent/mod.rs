@@ -23,7 +23,7 @@ use num_traits::cast::ToPrimitive;
 use reqwest::Url;
 use state::*;
 use std::{cmp::min, collections::HashMap, fmt::Debug, time::Duration};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::spawn_local;
 use yew::Callback;
@@ -429,7 +429,7 @@ where
                 None => {
                     return Err(OAuth2Error::LoginResult(
                         "Missing state from server".to_string(),
-                    ))
+                    ));
                 }
                 Some(state) => {
                     let stored_state = get_from_store(STORAGE_KEY_CSRF_TOKEN)?;
