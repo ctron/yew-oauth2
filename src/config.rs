@@ -34,8 +34,6 @@ pub mod openid {
         pub additional_trusted_audiences: Vec<String>,
         /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
         pub require_issuer_match: bool,
-        /// Allow following redirect (Be careful it opens the client up to SSRF vulnerabilities)
-        pub follow_client_redirects: bool,
     }
 
     impl Config {
@@ -50,7 +48,6 @@ pub mod openid {
                 post_logout_redirect_name: None,
                 additional_trusted_audiences: vec![],
                 require_issuer_match: true,
-                follow_client_redirects: false,
             }
         }
 
@@ -110,12 +107,6 @@ pub mod openid {
         /// Specifies whether the issuer claim must match the expected issuer URL for the provider.
         pub fn with_require_issuer_match(mut self, require_issuer_match: bool) -> Self {
             self.require_issuer_match = require_issuer_match;
-            self
-        }
-
-        /// Allow following redirect (Be careful it opens the client up to SSRF vulnerabilities)
-        pub fn with_follow_client_redirects(mut self, follow_redirect: bool) -> Self {
-            self.follow_client_redirects = follow_redirect;
             self
         }
     }
