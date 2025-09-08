@@ -103,11 +103,15 @@ impl Client for OpenIdClient {
             post_logout_redirect_name,
             additional_trusted_audiences,
             require_issuer_match,
+            follow_client_redirects,
         } = config;
 
+        let redirect_policy = match follow_client_redirects {
+            true => openidconnect::reqwest::redirect::Policy::limited(1),
+            false => openidconnect::reqwest::redirect::Policy::none(),
+        };
         let http_client = openidconnect::reqwest::ClientBuilder::new()
-            // Following redirects opens the client up to SSRF vulnerabilities.
-            // .redirect(openidconnect::reqwest::redirect::Policy::none())
+            .redirect(redirect_policy)
             .build()
             .map_err(|err| {
                 OAuth2Error::Configuration(format!("Failed to build HTTP client: {err}"))
