@@ -7,14 +7,14 @@
 Add to your `Cargo.toml`:
 
 ```toml
-yew-oauth2 = "0.11"
+yew-oauth2 = "0.12"
 ```
 
 By default, the `yew-nested-router` integration for [`yew-nested-router`](https://github.com/ctron/yew-nested-router) is
 disabled. You can enable it using:
 
 ```toml
-yew-oauth2 = { version = "0.10", features = ["yew-nested-router"] }
+yew-oauth2 = { version = "0.12", features = ["yew-nested-router"] }
 ```
 
 ## OpenID Connect
