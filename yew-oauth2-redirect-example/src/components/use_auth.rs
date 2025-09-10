@@ -17,6 +17,7 @@ impl UseAuthenticationProperties for Props {
 fn dummy() -> Authentication {
     Authentication {
         access_token: "".to_string(),
+        id_token: None,
         refresh_token: None,
         #[cfg(feature = "openid")]
         claims: None,

@@ -18,6 +18,7 @@ fn dummy() -> Authentication {
     Authentication {
         access_token: "".to_string(),
         refresh_token: None,
+        id_token: None,
         #[cfg(feature = "openid")]
         claims: None,
         expires: None,
