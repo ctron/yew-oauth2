@@ -6,6 +6,28 @@ use serde::{Deserialize, Serialize};
 pub mod openid {
     use super::*;
 
+    /// OpenID Metadata Urls
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+    pub struct MetadataUrls {
+        /// The OpenID connect auth URL.
+        pub auth: String,
+        /// The OpenID token auth URL.
+        pub token: String,
+        /// The OpenID user info auth URL.
+        pub user_info: String,
+        /// The OpenID jwks url.
+        pub jwks: String,
+    }
+    /// OpenID Metadata Source
+    /// Defines how to fetch the openid metadata (auth_url, token_url, user_info_url, jwks_url)
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+    pub enum MetadataSource {
+        #[default]
+        /// Using the discovery information living at `issuer_url/.well_known/openid-configuration` https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfig
+        Discovery,
+        /// Manual configuration
+        Manual(MetadataUrls),
+    }
     /// OpenID Connect client configuration
     ///
     /// ## Non-exhaustive
@@ -19,21 +41,13 @@ pub mod openid {
         pub client_id: String,
         /// The OpenID connect issuer URL.
         pub issuer_url: String,
-        /// If the following urls are set, the client will be built from them
-        /// The OpenID connect auth URL.
-        pub auth_url: Option<String>,
-        /// The OpenID token auth URL.
-        pub token_url: Option<String>,
-        /// The OpenID user info auth URL.
-        pub user_info_url: Option<String>,
-        /// The OpenID jwks url.
-        pub jwks_url: Option<String>,
+        /// How to fetch the metadata
+        pub metadata_source: MetadataSource,
         /// An override for the end session URL.
         pub end_session_url: Option<String>,
         /// The URL to navigate to after the logout has been completed.
         pub after_logout_url: Option<String>,
         /// The name of the query parameter for the post logout redirect.
-        ///
         /// The defaults to `post_logout_redirect_uri` for OpenID RP initiated logout.
         /// However, e.g. older Keycloak instances, require this to be `redirect_uri`.
         pub post_logout_redirect_name: Option<String>,
@@ -52,10 +66,7 @@ pub mod openid {
                 client_id: client_id.into(),
                 issuer_url: issuer_url.into(),
 
-                auth_url: None,
-                token_url: None,
-                user_info_url: None,
-                jwks_url: None,
+                metadata_source: MetadataSource::Discovery,
 
                 end_session_url: None,
                 after_logout_url: None,
@@ -124,25 +135,9 @@ pub mod openid {
             self
         }
 
-        /// Set the provider auth url, skip metadata
-        pub fn with_auth_url(mut self, auth_url: impl Into<String>) -> Self {
-            self.auth_url = Some(auth_url.into());
-            self
-        }
-
-        /// Set the provider token url, skip metadata
-        pub fn with_token_url(mut self, token_url: impl Into<String>) -> Self {
-            self.token_url = Some(token_url.into());
-            self
-        }
-        /// Set the provider user_info url, skip metadata
-        pub fn with_user_info_url(mut self, user_info_url: impl Into<String>) -> Self {
-            self.user_info_url = Some(user_info_url.into());
-            self
-        }
-        /// Set the provider jwks url, skip metadata
-        pub fn with_jwks_url(mut self, jwks_url: impl Into<String>) -> Self {
-            self.jwks_url = Some(jwks_url.into());
+        /// Set the metadata source
+        pub fn with_metadata_source(mut self, metadata_source: MetadataSource) -> Self {
+            self.metadata_source = metadata_source;
             self
         }
     }
