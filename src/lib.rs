@@ -1,4 +1,4 @@
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! Yew components to implement OAuth2 and OpenID Connect logins.
 //!
 //! ## OAuth2 or Open ID Connect
