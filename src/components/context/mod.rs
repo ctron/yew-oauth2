@@ -128,9 +128,11 @@ impl<C: Client> Component for OAuth2<C> {
     fn view(&self, ctx: &Context<Self>) -> Html {
         html!(
             <>
-                <ContextProvider<OAuth2Context> context={self.context.clone()} >
+                <ContextProvider<OAuth2Context> context={self.context.clone()}>
                     <ContextProvider<AgentContext<C>> context={self.agent.clone()}>
-                        <ContextProvider<LatestAccessToken> context={self.latest_access_token.clone()}>
+                        <ContextProvider<LatestAccessToken>
+                            context={self.latest_access_token.clone()}
+                        >
                             { for ctx.props().children.iter() }
                         </ContextProvider<LatestAccessToken>>
                     </ContextProvider<AgentContext<C>>>

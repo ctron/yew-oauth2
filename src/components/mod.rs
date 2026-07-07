@@ -17,5 +17,9 @@ pub use use_authentication::*;
 use yew::prelude::*;
 
 fn missing_context() -> Html {
-    html!(<div> { "Unable to find OAuth2 context! This element needs to be wrapped into an `OAuth2` component somewhere in the hierarchy"} </div>)
+    html!(
+        <div>
+            { "Unable to find OAuth2 context! This element needs to be wrapped into an `OAuth2` component somewhere in the hierarchy" }
+        </div>
+    )
 }

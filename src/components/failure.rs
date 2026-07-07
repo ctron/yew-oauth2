@@ -29,11 +29,7 @@ pub fn failure(props: &FailureProps) -> Html {
         None => missing_context(),
         Some(OAuth2Context::Failed(..)) => {
             html!(
-                <@{element}
-                    id={ props.id.clone() }
-                    style={ props.style.clone() }
-                    class={ &props.class }
-                    >
+                <@{element} id={props.id.clone()} style={props.style.clone()} class={&props.class}>
                     { for props.children.iter() }
                 </@>
             )
@@ -64,11 +60,7 @@ pub fn failure_message(props: &FailureMessageProps) -> Html {
         None => missing_context(),
         Some(OAuth2Context::Failed(message)) => {
             html!(
-                <@{element}
-                    id={ props.id.clone() }
-                    style={ props.style.clone() }
-                    class={ &props.class }
-                    >
+                <@{element} id={props.id.clone()} style={props.style.clone()} class={&props.class}>
                     { message }
                 </@>
             )
