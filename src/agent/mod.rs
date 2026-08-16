@@ -417,6 +417,10 @@ where
             // cleanup URL
             Self::cleanup_url();
 
+            if error == "login_required" || error == "interaction_required" {
+                return Err(OAuth2Error::LoginRequired);
+            }
+
             // error from the OAuth2 server
             return Err(OAuth2Error::LoginResult(error));
         }

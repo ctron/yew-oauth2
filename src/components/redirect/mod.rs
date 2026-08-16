@@ -135,6 +135,10 @@ where
                         let _ = agent.start_login();
                     }
                 }
+                Reason::LoginRequired => {
+                    // silent login (prompt=none) found no active session — do nothing,
+                    // let the app handle this as NotAuthenticated
+                }
                 Reason::Expired | Reason::Logout => {
                     match self.auth {
                         None | Some(OAuth2Context::NotInitialized) => {

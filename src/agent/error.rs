@@ -12,6 +12,8 @@ pub enum OAuth2Error {
     StartLogin(String),
     /// Failed to handle login result
     LoginResult(String),
+    /// Silent login found no active session (not a real error)
+    LoginRequired,
     /// Failed to handle token refresh
     Refresh(String),
     /// Failing storing information
@@ -27,6 +29,7 @@ impl Display for OAuth2Error {
             Self::Configuration(err) => write!(f, "configuration error: {err}"),
             Self::StartLogin(err) => write!(f, "start login error: {err}"),
             Self::LoginResult(err) => write!(f, "login result: {err}"),
+            Self::LoginRequired => f.write_str("login required"),
             Self::Refresh(err) => write!(f, "refresh error: {err}"),
             Self::Storage(err) => write!(f, "storage error: {err}"),
             Self::Internal(err) => write!(f, "internal error: {err}"),
@@ -38,7 +41,12 @@ impl std::error::Error for OAuth2Error {}
 
 impl From<OAuth2Error> for OAuth2Context {
     fn from(err: OAuth2Error) -> Self {
-        OAuth2Context::Failed(err.to_string())
+        match err {
+            OAuth2Error::LoginRequired => OAuth2Context::NotAuthenticated {
+                reason: crate::context::Reason::LoginRequired,
+            },
+            other => OAuth2Context::Failed(other.to_string()),
+        }
     }
 }
 

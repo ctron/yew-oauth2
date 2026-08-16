@@ -86,6 +86,8 @@ pub enum Reason {
     Expired,
     /// Because the user chose to log out.
     Logout,
+    /// Silent login (prompt=none) found no active session.
+    LoginRequired,
 }
 
 /// A handle to access the latest access token.
